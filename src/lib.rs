@@ -1,7 +1,36 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+use spdk_sys::*;
+use std::ffi::CStr;
+
+pub mod bdev;
+pub mod blob;
+pub mod blob_bdev;
+
+#[derive(Debug, thiserror::Error)]
+#[error("spdk error: {msg}")]
+pub struct SpdkError {
+    msg: String,
+    errno: i32,
+}
+
+impl From<i32> for SpdkError {
+    fn from(errno: i32) -> Self {
+        assert_ne!(errno, 0);
+        let cstr = unsafe { spdk_strerror(errno) };
+        SpdkError {
+            msg: unsafe { CStr::from_ptr(cstr) }.to_str().unwrap().into(),
+            errno,
+        }
     }
 }
+
+impl SpdkError {
+    fn from_retval(errno: i32) -> Result<()> {
+        if errno == 0 {
+            Ok(())
+        } else {
+            Err(SpdkError::from(errno))
+        }
+    }
+}
+
+pub type Result<T> = std::result::Result<T, SpdkError>;
