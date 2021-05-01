@@ -9,4 +9,5 @@ edition = "2018"
 [dependencies]
 log = "0.4"
 thiserror = "1.0"
+futures-lite = "1.11"
 spdk-sys = { path = "spdk-sys" }

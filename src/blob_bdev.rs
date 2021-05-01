@@ -8,7 +8,7 @@ use std::{ffi::CString, mem::MaybeUninit};
 /// TODO: Implement Drop
 #[derive(Debug)]
 pub struct BlobStoreBDev {
-    ptr: *mut spdk_bs_dev,
+    pub(crate) ptr: *mut spdk_bs_dev,
 }
 
 impl BlobStoreBDev {
