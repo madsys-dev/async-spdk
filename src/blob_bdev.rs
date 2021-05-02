@@ -1,6 +1,9 @@
 use crate::{Result, SpdkError};
 use spdk_sys::*;
-use std::{ffi::CString, mem::MaybeUninit};
+use std::{
+    ffi::{c_void, CString},
+    mem::MaybeUninit,
+};
 
 /// SPDK blob store block device.
 ///
@@ -16,10 +19,17 @@ impl BlobStoreBDev {
     pub fn create(name: &str) -> Result<Self> {
         let cname = CString::new(name).expect("Couldn't create a string");
         let mut ptr = MaybeUninit::uninit();
+        extern "C" fn callback(
+            ty: spdk_bdev_event_type,
+            bdev: *mut spdk_bdev,
+            event_ctx: *mut c_void,
+        ) {
+            todo!()
+        }
         let err = unsafe {
             spdk_bdev_create_bs_dev_ext(
                 cname.as_ptr(),
-                None,
+                Some(callback),
                 std::ptr::null_mut(),
                 ptr.as_mut_ptr(),
             )

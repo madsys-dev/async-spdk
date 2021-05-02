@@ -38,7 +38,7 @@ impl Blobstore {
     }
 
     /// Allocate an I/O channel for the given blobstore.
-    pub fn alloc_io_channel(&mut self) -> Result<IoChannel> {
+    pub fn alloc_io_channel(&self) -> Result<IoChannel> {
         let ptr = unsafe { spdk_bs_alloc_io_channel(self.ptr) };
         if ptr.is_null() {
             // FIXME: proper error

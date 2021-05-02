@@ -1,5 +1,6 @@
 #include "spdk/bdev.h"
 #include "spdk/blob.h"
 #include "spdk/blob_bdev.h"
-#include "spdk/nvme.h"
+#include "spdk/env.h"
+#include "spdk/event.h"
 #include "spdk/string.h"
