@@ -83,7 +83,8 @@ impl Blobstore {
             spdk_bs_open_blob(self.ptr, blob_id.id, Some(callback_with), arg);
         })
         .await?;
-        Ok(Blob { ptr })
+        let io_unit_size = self.io_unit_size();
+        Ok(Blob { ptr, io_unit_size })
     }
 
     /// Delete an existing blob from the given blobstore.
@@ -121,6 +122,7 @@ impl Drop for IoChannel {
 #[derive(Debug)]
 pub struct Blob {
     ptr: *mut spdk_blob,
+    io_unit_size: u64,
 }
 
 impl Blob {
@@ -137,13 +139,15 @@ impl Blob {
 
     /// Read data from a blob.
     pub async fn read(&self, io_channel: &IoChannel, offset: u64, buf: &mut [u8]) -> Result<()> {
+        assert_eq!(buf.len() as u64 % self.io_unit_size, 0);
+        let units = buf.len() as u64 / self.io_unit_size;
         do_async(|arg| unsafe {
             spdk_blob_io_read(
                 self.ptr,
                 io_channel.ptr,
                 buf.as_mut_ptr() as _,
                 offset,
-                buf.len() as _,
+                units,
                 Some(callback),
                 arg,
             );
@@ -153,13 +157,15 @@ impl Blob {
 
     /// Write data to a blob.
     pub async fn write(&self, io_channel: &IoChannel, offset: u64, buf: &[u8]) -> Result<()> {
+        assert_eq!(buf.len() as u64 % self.io_unit_size, 0);
+        let units = buf.len() as u64 / self.io_unit_size;
         do_async(|arg| unsafe {
             spdk_blob_io_write(
                 self.ptr,
                 io_channel.ptr,
                 buf.as_ptr() as _,
                 offset,
-                buf.len() as _,
+                units,
                 Some(callback),
                 arg,
             );
@@ -169,8 +175,10 @@ impl Blob {
 
     /// Write zeros into area of a blob.
     pub async fn write_zero(&self, io_channel: &IoChannel, offset: u64, len: u64) -> Result<()> {
+        assert_eq!(len % self.io_unit_size, 0);
+        let units = len / self.io_unit_size;
         do_async(|arg| unsafe {
-            spdk_blob_io_write_zeroes(self.ptr, io_channel.ptr, offset, len, Some(callback), arg);
+            spdk_blob_io_write_zeroes(self.ptr, io_channel.ptr, offset, units, Some(callback), arg);
         })
         .await
     }

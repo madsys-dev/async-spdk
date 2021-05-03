@@ -28,8 +28,8 @@ async fn async_main() -> Result<()> {
     let blobstore = blob::Blobstore::init(&mut bs_dev).await?;
     info!("Blobstore created");
 
-    let page_size = blobstore.page_size();
-    info!("Page size: {:?}", page_size);
+    let io_unit_size = blobstore.io_unit_size();
+    info!("IO unit size: {:?}", io_unit_size);
 
     let blob_id = blobstore.create_blob().await?;
     info!("Blob created: {:?}", blob_id);
@@ -52,7 +52,7 @@ async fn async_main() -> Result<()> {
      * Buffers for data transfer need to be allocated via SPDK. We will
      * tranfer 1 page of 4K aligned data at offset 0 in the blob.
      */
-    let mut write_buf = env::DmaBuf::alloc(page_size as usize, 0x1000);
+    let mut write_buf = env::DmaBuf::alloc(io_unit_size as usize, 0x1000);
     write_buf.as_mut().fill(0x5a);
 
     /* Now we have to allocate a channel. */
@@ -63,7 +63,7 @@ async fn async_main() -> Result<()> {
     blob.write(&channel, 0, write_buf.as_ref()).await?;
     info!("Finished writing");
 
-    let mut read_buf = env::DmaBuf::alloc(page_size as usize, 0x1000);
+    let mut read_buf = env::DmaBuf::alloc(io_unit_size as usize, 0x1000);
 
     /* Issue the read */
     info!("Starting read");
