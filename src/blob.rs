@@ -59,6 +59,7 @@ impl Blobstore {
     /// Unload the blobstore.
     ///
     /// It will flush all volatile data to disk.
+    /// WARN: all io_channels must be dropped before unload!
     pub async fn unload(self) -> Result<()> {
         do_async(|arg| unsafe {
             spdk_bs_unload(self.ptr, Some(callback), arg);

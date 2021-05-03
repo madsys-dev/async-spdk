@@ -1,5 +1,6 @@
 use spdk_sys::*;
 
+#[derive(Debug)]
 pub struct DmaBuf {
     ptr: *mut u8,
     len: usize,

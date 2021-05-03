@@ -11,7 +11,7 @@ pub struct SpdkError {
 impl From<i32> for SpdkError {
     fn from(errno: i32) -> Self {
         assert_ne!(errno, 0);
-        let cstr = unsafe { spdk_strerror(errno) };
+        let cstr = unsafe { spdk_strerror(-errno) };
         SpdkError {
             msg: unsafe { CStr::from_ptr(cstr) }.to_str().unwrap().into(),
             errno,

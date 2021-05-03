@@ -1,4 +1,5 @@
 use crate::{Result, SpdkError};
+use log::*;
 use spdk_sys::*;
 use std::{
     ffi::{c_void, CString},
@@ -24,7 +25,10 @@ impl BlobStoreBDev {
             bdev: *mut spdk_bdev,
             event_ctx: *mut c_void,
         ) {
-            todo!()
+            warn!(
+                "bdev callback: type={:?}, bdev={:?}, ctx={:?}",
+                ty, bdev, event_ctx
+            );
         }
         let err = unsafe {
             spdk_bdev_create_bs_dev_ext(

@@ -13,6 +13,15 @@ fn main() {
 async fn async_main() -> Result<()> {
     info!("start main");
 
+    info!("testing future spawn");
+    let ret = event::spawn(async {
+        info!("new future is running");
+        1
+    })
+    .await;
+    assert_eq!(ret, 1);
+    info!("future joined");
+
     let mut bs_dev = blob_bdev::BlobStoreBDev::create("Malloc0")?;
     info!("BlobstoreBdev created");
 
@@ -75,6 +84,9 @@ async fn async_main() -> Result<()> {
     blobstore.delete_blob(blob_id).await?;
     info!("Deleted");
 
+    // XXX: io_channel must be dropped before unload.
+    // TODO: find a way to force that in Rust
+    drop(channel);
     blobstore.unload().await?;
     info!("Blobstore unloaded");
 
