@@ -5,5 +5,6 @@ mod complete;
 pub mod env;
 mod error;
 pub mod event;
+pub mod thread;
 
 pub use crate::error::*;

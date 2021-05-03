@@ -1,13 +1,23 @@
 use async_spdk::*;
 use log::*;
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
+fn main() {
     env_logger::init();
+    event::AppOpts::new()
+        .name("hello_blob")
+        .config_file(&std::env::args().nth(1).expect("no config_file"))
+        .block_on(async_main())
+        .unwrap();
+}
+
+async fn async_main() -> Result<()> {
+    info!("start main");
 
     let mut bs_dev = blob_bdev::BlobStoreBDev::create("Malloc0")?;
+    info!("BlobstoreBdev created");
 
     let blobstore = blob::Blobstore::init(&mut bs_dev).await?;
+    info!("Blobstore created");
 
     let page_size = blobstore.page_size();
     info!("Page size: {:?}", page_size);
@@ -53,7 +63,7 @@ async fn main() -> Result<()> {
 
     /* Now let's make sure things match. */
     if write_buf.as_ref() != read_buf.as_ref() {
-        info!("Error in data compare");
+        error!("Error in data compare");
     } else {
         info!("read SUCCESS and data matches!");
     }
