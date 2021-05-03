@@ -3,16 +3,7 @@ use std::path::PathBuf;
 
 fn main() {
     // Tell cargo to tell rustc to link the system shared library.
-    println!("cargo:rustc-link-lib=spdk");
-    println!("cargo:rustc-link-lib=spdk_env_dpdk");
-    println!("cargo:rustc-link-lib=rte_eal");
-    println!("cargo:rustc-link-lib=rte_mempool");
-    println!("cargo:rustc-link-lib=rte_ring");
-    println!("cargo:rustc-link-lib=rte_mbuf");
-    println!("cargo:rustc-link-lib=rte_bus_pci");
-    println!("cargo:rustc-link-lib=rte_pci");
-    println!("cargo:rustc-link-lib=rte_mempool_ring");
-    println!("cargo:rustc-link-lib=rte_power");
+    println!("cargo:rustc-link-lib=spdk_fat");
 
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=wrapper.h");
