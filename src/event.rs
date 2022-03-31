@@ -33,7 +33,7 @@ impl AppOpts {
     }
 
     pub fn config_file(mut self, config_file: &str) -> Self {
-        self.0.config_file = CString::new(config_file)
+        self.0.json_config_file = CString::new(config_file)
             .expect("Couldn't create a string")
             .into_raw();
         self
@@ -138,7 +138,7 @@ unsafe fn poller_waker(poller: *mut spdk_poller) -> Waker {
 impl Drop for AppOpts {
     fn drop(&mut self) {
         drop_if_not_null(self.0.name);
-        drop_if_not_null(self.0.config_file);
+        drop_if_not_null(self.0.json_config_file);
     }
 }
 

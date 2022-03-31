@@ -84,8 +84,7 @@ for a in $ARCHIVES; do
 done
 
 [ -d target ] || mkdir target
-cc -shared -o target/libspdk_fat.so \
-    -laio -lnuma -luuid -lcrypto \
+cc -shared -o target/libspdk_fat.so -laio -lnuma -luuid -lcrypto \
 	-Wl,--whole-archive $ARCHIVES -Wl,--no-whole-archive
 
 	# -lc -lrdmacm -laio -libverbs -liscsi -lnuma -ldl -lrt -luuid -lcrypto \

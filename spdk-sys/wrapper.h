@@ -4,3 +4,6 @@
 #include "spdk/env.h"
 #include "spdk/event.h"
 #include "spdk/string.h"
+#include "spdk/env_dpdk.h"
+#include "spdk/vmd.h"
+#include "spdk/log.h"
