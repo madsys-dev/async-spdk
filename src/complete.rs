@@ -5,6 +5,7 @@ use std::{
     pin::Pin,
     task::{Poll, Waker},
 };
+use log::*;
 
 #[derive(Default)]
 pub struct LocalComplete<T> {
