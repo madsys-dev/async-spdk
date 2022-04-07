@@ -14,7 +14,7 @@ fn main() {
 async fn async_main() -> Result<()>{
     info!("start main: hello_bdev");
 
-    let bdev_desc = BDevDesc::create_desc("Malloc0")?;
+    let bdev_desc = BdevDesc::create_desc("Malloc0")?;
     info!("get bdev descriptor");
 
     let Bdev = bdev_desc.get_bdev()?;
@@ -50,6 +50,11 @@ async fn async_main() -> Result<()>{
 
     bdev_desc.close();
     info!("bdev closed");
+
+    // attention! io channel and dma buffer is dropped automatically
+    // since we implement drop trait
+    // don't need to call any free API
+    // TODO: any other struct need to implement DROP for more convenience?
 
     Ok(())
 }

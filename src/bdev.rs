@@ -38,6 +38,7 @@ impl BDev {
         Some(BDev { ptr })
     }
 
+    /// Get block size in bytes
     pub fn get_block_size(&self) -> u32{
         let ret = unsafe{
             spdk_bdev_get_block_size(self.ptr)
@@ -45,6 +46,7 @@ impl BDev {
         ret
     }
 
+    /// Get buffer alignment size
     pub fn get_buf_align(&self) -> usize{
         let ret = unsafe{
             spdk_bdev_get_buf_align(self.ptr) as usize
@@ -53,12 +55,14 @@ impl BDev {
     }
 }
 
+/// Bdev
 #[derive(Debug)]
-pub struct BDevDesc{
+pub struct BdevDesc{
     ptr: *mut spdk_bdev_desc,
 }
 
-impl BDevDesc{
+impl BdevDesc{
+    /// Open bdev, and Create bdev descriptor by name
     pub fn create_desc(name: &str) -> Result<Self>{
         let cname = CString::new(name).expect("Could not parse to CString");
         let mut ptr = MaybeUninit::uninit();
@@ -82,13 +86,14 @@ impl BDevDesc{
             )
         };
         SpdkError::from_retval(err)?;
-        Ok(BDevDesc{
+        Ok(BdevDesc{
             ptr: unsafe {
                 ptr.assume_init()
             },
         })
     }
 
+    /// Get bdev handle by bdev descriptor
     pub fn get_bdev(&self) -> Result<BDev>{
         let ptr = unsafe{
             spdk_bdev_desc_get_bdev(self.ptr)
@@ -101,6 +106,7 @@ impl BDevDesc{
         })
     }
 
+    /// Get Io channel
     pub fn get_io_channel(&self) -> Result<BdevIoChannel>{
         let ptr = unsafe{ spdk_bdev_get_io_channel(self.ptr) };
         if ptr.is_null(){
@@ -109,12 +115,16 @@ impl BDevDesc{
         Ok(BdevIoChannel {ptr})
     }
     
+    /// Close bdev
     pub fn close(&self){
         unsafe{
             spdk_bdev_close(self.ptr);
         }
     }
 
+    /// write data at offset
+    /// TODO: check write buffer size and handle return value
+    /// spdk_bdev_write return 0 for success
     pub async fn write(
         &self, 
         io_channel: &BdevIoChannel, 
@@ -136,6 +146,9 @@ impl BDevDesc{
         .await
     }
 
+    /// read data at offset
+    /// TODO: handle return value (should not be ())
+    /// spdk_bdev_read return 0 for success
     pub async fn read(
         &self,
         io_channel: &BdevIoChannel,
@@ -171,6 +184,8 @@ pub struct BdevIo{
 }
 
 impl BdevIo{
+    /// special API in bdev
+    /// should be called manually after an io event 
     pub fn free_io(&self){
         unsafe{
             spdk_bdev_free_io(self.ptr)
@@ -278,6 +293,7 @@ extern "C" fn callback_with<T>(
         Ok(bs)
     };
     complete.complete(result);
+    /// manually free io event in callback function
     unsafe{
         spdk_bdev_free_io(bio);
     }
