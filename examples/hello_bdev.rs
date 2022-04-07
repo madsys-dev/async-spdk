@@ -26,7 +26,7 @@ async fn async_main() -> Result<()>{
     let balign = Bdev.get_buf_align();
     info!("get buffer align");
 
-    let mut write_buf = dma_buf::new(blk_size as u64, balign as u64)?;
+    let mut write_buf = SpdkDmaBuf::new(blk_size as u64, balign as u64)?;
     write_buf.fill(0x5a);
 
     let channel = bdev_desc.get_io_channel()?;
@@ -36,7 +36,7 @@ async fn async_main() -> Result<()>{
     bdev_desc.write(&channel, 0, write_buf.len() as u64, write_buf.as_slice()).await?;
     info!("finish writing");
 
-    let mut read_buf = dma_buf::new(blk_size as u64, balign as u64)?;
+    let mut read_buf = SpdkDmaBuf::new(blk_size as u64, balign as u64)?;
 
     info!("start reading");
     bdev_desc.read(&channel, 0, read_buf.len() as u64, read_buf.as_mut_slice()).await?;

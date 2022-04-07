@@ -1,7 +1,7 @@
 use spdk_sys::*;
 use std::{ffi::{CString, c_void}, mem::MaybeUninit};
 use log::*;
-use crate::{Result, SpdkError, blob::IoChannel};
+use crate::{Result, SpdkError};
 use std::os::raw::c_int;
 use crate::complete::LocalComplete;
 use std::{
@@ -10,11 +10,11 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct BdevIochannel{
+pub struct BdevIoChannel{
     pub ptr: *mut spdk_io_channel,
 }
 
-impl Drop for BdevIochannel{
+impl Drop for BdevIoChannel{
     fn drop(&mut self) {
         unsafe { spdk_put_io_channel(self.ptr) };
     }
@@ -101,12 +101,12 @@ impl BDevDesc{
         })
     }
 
-    pub fn get_io_channel(&self) -> Result<IoChannel>{
+    pub fn get_io_channel(&self) -> Result<BdevIoChannel>{
         let ptr = unsafe{ spdk_bdev_get_io_channel(self.ptr) };
         if ptr.is_null(){
             return Err(SpdkError::from(-1));
         }
-        Ok(IoChannel {ptr})
+        Ok(BdevIoChannel {ptr})
     }
     
     pub fn close(&self){
@@ -117,7 +117,7 @@ impl BDevDesc{
 
     pub async fn write(
         &self, 
-        io_channel: &IoChannel, 
+        io_channel: &BdevIoChannel, 
         offset: u64,
         length: u64,
         buf: &[u8]
@@ -138,7 +138,7 @@ impl BDevDesc{
 
     pub async fn read(
         &self,
-        io_channel: &IoChannel,
+        io_channel: &BdevIoChannel,
         offset: u64,
         length: u64,
         buf: &mut [u8],
@@ -179,12 +179,12 @@ impl BdevIo{
 }
 
 #[derive(Debug)]
-pub struct dma_buf{
+pub struct SpdkDmaBuf{
     buf: *mut c_void,
     length: usize,
 }
 
-impl dma_buf{
+impl SpdkDmaBuf{
     pub fn as_slice(&self) -> &[u8] {
         unsafe { from_raw_parts(self.buf as *mut u8, self.length as usize) }
     }
@@ -203,7 +203,7 @@ impl dma_buf{
         }
     }
 
-    pub fn new(size: u64, alignment: u64) -> Result<dma_buf> {
+    pub fn new(size: u64, alignment: u64) -> Result<SpdkDmaBuf> {
         let buf;
         unsafe {
             buf = spdk_zmalloc(
@@ -218,7 +218,7 @@ impl dma_buf{
         if buf.is_null() {
             Err(SpdkError::from(-1))
         } else {
-            Ok(dma_buf {
+            Ok(SpdkDmaBuf {
                 buf,
                 length: size as usize,
             })
@@ -234,7 +234,7 @@ impl dma_buf{
     }
 }
 
-impl Deref for dma_buf {
+impl Deref for SpdkDmaBuf {
     type Target = *mut c_void;
 
     fn deref(&self) -> &Self::Target {
@@ -242,13 +242,13 @@ impl Deref for dma_buf {
     }
 }
 
-impl DerefMut for dma_buf {
+impl DerefMut for SpdkDmaBuf {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.buf
     }
 }
 
-impl Drop for dma_buf {
+impl Drop for SpdkDmaBuf {
     fn drop(&mut self) {
         unsafe { spdk_dma_free(self.buf as *mut c_void) }
     }
