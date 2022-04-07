@@ -1,5 +1,5 @@
 
-[![CI](https://github.com/madsys-dev/async-spdk/workflows/CI/badge.svg?branch=main)](https://github.com/madsys-dev/async-spdk/actions)
+[![Rust](https://github.com/madsys-dev/async-spdk/workflows/CI/badge.svg?branch=main)](https://github.com/madsys-dev/async-spdk/actions)
 
 - use `./configure --without-isal` instead of `./configure` to avoid isa-unsupported or certain error when congifure SPDK
 - add env variables explicitly 
