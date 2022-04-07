@@ -30,6 +30,7 @@ async fn async_main() -> Result<()>{
     write_buf.fill(0x5a);
 
     let channel = bdev_desc.get_io_channel()?;
+    info!("io channel get");
 
     info!("start writing");
     bdev_desc.write(&channel, 0, write_buf.len() as u64, write_buf.as_slice()).await?;
@@ -47,14 +48,8 @@ async fn async_main() -> Result<()>{
         info!("data matches!");
     }
 
-    Bdev.release_io_channel(channel);
-    info!("channel released");
-
     bdev_desc.close();
     info!("bdev closed");
-
-    drop(write_buf);
-    drop(read_buf);
 
     Ok(())
 }

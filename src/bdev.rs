@@ -9,7 +9,16 @@ use std::{
     slice::{from_raw_parts, from_raw_parts_mut},
 };
 
+#[derive(Debug)]
+pub struct BdevIochannel{
+    pub ptr: *mut spdk_io_channel,
+}
 
+impl Drop for BdevIochannel{
+    fn drop(&mut self) {
+        unsafe { spdk_put_io_channel(self.ptr) };
+    }
+}
 
 /// SPDK block device.
 /// TODO: Implement Drop
@@ -41,12 +50,6 @@ impl BDev {
             spdk_bdev_get_buf_align(self.ptr) as usize
         };
         ret
-    }
-
-    pub fn release_io_channel(&self, ioc: IoChannel){
-        unsafe{
-            spdk_put_io_channel(ioc.ptr);
-        }
     }
 }
 
