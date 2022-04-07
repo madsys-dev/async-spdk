@@ -1,0 +1,33 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install SPDK
+      run: |
+        cd spdk-sys
+        git clone https://github.com/spdk/spdk spdk
+        cd spdk
+        git submodule update --init
+        sudo scripts/pkgdep.sh
+        ./configure --without-isal
+        make
+    - name: Build
+      run: |
+        export CPATH=$PWD/spdk-sys/spdk/build/include
+        export LIBRARY_PATH=$PWD/spdk-sys/target:$PWD/spdk-sys/spdk/build/lib
+        export LD_LIBRARY_PATH=$PWD/spdk-sys/target:$PWD/spdk-sys/spdk/build/lib
+        cargo build
