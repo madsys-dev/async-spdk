@@ -123,7 +123,9 @@ impl BdevDesc{
     }
 
     /// write data at offset
+    /// 
     /// TODO: check write buffer size and handle return value
+    /// 
     /// spdk_bdev_write return 0 for success
     pub async fn write(
         &self, 
@@ -147,7 +149,9 @@ impl BdevDesc{
     }
 
     /// read data at offset
+    /// 
     /// TODO: handle return value (should not be ())
+    /// 
     /// spdk_bdev_read return 0 for success
     pub async fn read(
         &self,
@@ -185,6 +189,7 @@ pub struct BdevIo{
 
 impl BdevIo{
     /// special API in bdev
+    /// 
     /// should be called manually after an io event 
     pub fn free_io(&self){
         unsafe{
