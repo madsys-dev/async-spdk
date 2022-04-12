@@ -24,25 +24,25 @@ async fn async_main() -> Result<()>{
     info!("get block size: {}", blk_size);
 
     let balign = Bdev.get_buf_align();
-    info!("get buffer align");
+    info!("get buffer align: {}", balign);
 
-    let mut write_buf = SpdkDmaBuf::new(blk_size as u64, balign as u64)?;
-    write_buf.fill(0x5a);
+    let mut write_buf = env::DmaBuf::alloc(blk_size as usize, 0x1000);
+    write_buf.as_mut().fill(0x5a);
 
     let channel = bdev_desc.get_io_channel()?;
     info!("io channel get");
 
     info!("start writing");
-    bdev_desc.write(&channel, 0, write_buf.len() as u64, write_buf.as_slice()).await?;
+    bdev_desc.write(&channel, 0, blk_size as u64, write_buf.as_ref()).await?;
     info!("finish writing");
 
-    let mut read_buf = SpdkDmaBuf::new(blk_size as u64, balign as u64)?;
+    let mut read_buf = env::DmaBuf::alloc(blk_size as usize, 0x1000);
 
     info!("start reading");
-    bdev_desc.read(&channel, 0, read_buf.len() as u64, read_buf.as_mut_slice()).await?;
+    bdev_desc.read(&channel, 0, blk_size as u64, read_buf.as_mut()).await?;
     info!("finish reading");
 
-    if write_buf.as_slice() != read_buf.as_slice(){
+    if write_buf.as_ref() != read_buf.as_ref(){
         error!("inconsistent data!");
     }else{
         info!("data matches!");
