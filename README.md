@@ -14,3 +14,5 @@
 
 - for my own convenience
     - `export CPATH=$PWD/spdk-sys/spdk/build/include LIBRARY_PATH=$PWD/spdk-sys/target:$PWD/spdk-sys/spdk/build/lib LD_LIBRARY_PATH=$PWD/spdk-sys/target:$PWD/spdk-sys/spdk/build/lib RUST_LOG=info`
+
+- global BlobId manager?
