@@ -2,7 +2,7 @@ use spdk_sys::*;
 use std::{ffi::{CString, c_void}, mem::MaybeUninit};
 use log::*;
 use crate::{Result, SpdkError};
-use std::os::raw::c_int;
+//use std::os::raw::c_int;
 use crate::complete::LocalComplete;
 use std::{
     ops::{Deref, DerefMut},
@@ -176,7 +176,7 @@ impl BdevDesc{
 }
 
 
-#[warn(dead_code)]
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct IoWaitEntry{
     wentry: spdk_bdev_io_wait_entry,
@@ -298,7 +298,7 @@ extern "C" fn callback_with<T>(
         Ok(bs)
     };
     complete.complete(result);
-    /// manually free io event in callback function
+    // manually free io event in callback function
     unsafe{
         spdk_bdev_free_io(bio);
     }

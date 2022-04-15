@@ -6,10 +6,14 @@ use std::ffi::c_void;
 use std::fmt;
 use std::os::raw::c_int;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Blobstore {
     ptr: *mut spdk_blob_store,
 }
+
+// unsafe impl Send for Blobstore {}
+// unsafe impl Sync for Blobstore {}
+
 
 impl Blobstore {
     /// Get the cluster size in bytes.
@@ -113,6 +117,10 @@ pub struct IoChannel {
     pub(crate) ptr: *mut spdk_io_channel,
 }
 
+// unsafe impl Send for IoChannel {}
+// unsafe impl Sync for IoChannel {}
+
+
 impl Drop for IoChannel {
     fn drop(&mut self) {
         unsafe { spdk_bs_free_io_channel(self.ptr) };
@@ -124,6 +132,9 @@ pub struct Blob {
     ptr: *mut spdk_blob,
     io_unit_size: u64,
 }
+
+// unsafe impl Send for Blob {}
+// unsafe impl Sync for Blob {}
 
 impl Blob {
     /// Get the number of clusters allocated to the blob.
