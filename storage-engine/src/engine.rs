@@ -65,7 +65,11 @@ impl DeviceEngine{
     }
 }
 
-
+#[test]
+fn test_open(){
+    let de = DeviceEngine::new("Malloc0", "test_engine.json");
+    de.close();
+}
 
 
 
