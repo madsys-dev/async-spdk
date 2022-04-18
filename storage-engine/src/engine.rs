@@ -5,17 +5,17 @@ use crate::common::{DeviceEngine, EngineBlob};
 
 impl DeviceEngine{
     /// new a device engine by name and config_file
-    pub fn new(name: &str, config_file: &str)-> Self{
-        let bs = event::AppOpts::new()
+    pub async fn new(name: &str, config_file: &str)-> Self{
+        let opts = event::AppOpts::new()
                     .name("madio")
-                    .config_file(config_file)
-                    .block_on(DeviceEngine::open_bs(name.clone()))
-                    .unwrap();
+                    .config_file(config_file);
+        let bs = opts.block_on(DeviceEngine::open_bs(name.clone())).unwrap();
         let io_size = bs.io_unit_size();
         Self{
             bs: Arc::new(bs),
             name: String::from(name),
             io_size: io_size,
+            config_file: String::from(config_file),
         }
     }
     

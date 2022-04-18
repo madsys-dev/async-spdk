@@ -106,6 +106,16 @@ pub struct BlobId {
     id: spdk_blob_id,
 }
 
+impl BlobId{
+    /// set a specific blob_id
+    /// todo: check id legalization
+    pub fn set_blob_id(id: spdk_blob_id) -> Self{
+        Self{
+            id: id,
+        }
+    }
+}
+
 impl fmt::Display for BlobId {
     fn fmt<'a>(&self, f: &mut fmt::Formatter<'a>) -> fmt::Result {
         write!(f, "BlobId({:?})", self.id)
