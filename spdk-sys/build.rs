@@ -1,9 +1,8 @@
+use std::collections::HashSet;
 use std::env;
 use std::path::PathBuf;
-use std::collections::HashSet;
 
 fn main() {
-
     let ignored_macros = IgnoreMacros(
         vec![
             "FP_INFINITE".into(),
