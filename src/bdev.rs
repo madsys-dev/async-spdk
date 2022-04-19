@@ -1,15 +1,24 @@
 use spdk_sys::*;
 use std::{ffi::{CString, c_void}, mem::MaybeUninit};
 use log::*;
-use crate::{Result, SpdkError, blob::IoChannel};
-use std::os::raw::c_int;
+use crate::{Result, SpdkError};
+//use std::os::raw::c_int;
 use crate::complete::LocalComplete;
 use std::{
     ops::{Deref, DerefMut},
     slice::{from_raw_parts, from_raw_parts_mut},
 };
 
+#[derive(Debug)]
+pub struct BdevIoChannel{
+    pub ptr: *mut spdk_io_channel,
+}
 
+impl Drop for BdevIoChannel{
+    fn drop(&mut self) {
+        unsafe { spdk_put_io_channel(self.ptr) };
+    }
+}
 
 /// SPDK block device.
 /// TODO: Implement Drop
@@ -29,6 +38,7 @@ impl BDev {
         Some(BDev { ptr })
     }
 
+    /// Get block size in bytes
     pub fn get_block_size(&self) -> u32{
         let ret = unsafe{
             spdk_bdev_get_block_size(self.ptr)
@@ -36,26 +46,23 @@ impl BDev {
         ret
     }
 
+    /// Get buffer alignment size
     pub fn get_buf_align(&self) -> usize{
         let ret = unsafe{
             spdk_bdev_get_buf_align(self.ptr) as usize
         };
         ret
     }
-
-    pub fn release_io_channel(&self, ioc: IoChannel){
-        unsafe{
-            spdk_put_io_channel(ioc.ptr);
-        }
-    }
 }
 
+/// Bdev
 #[derive(Debug)]
-pub struct BDevDesc{
+pub struct BdevDesc{
     ptr: *mut spdk_bdev_desc,
 }
 
-impl BDevDesc{
+impl BdevDesc{
+    /// Open bdev, and Create bdev descriptor by name
     pub fn create_desc(name: &str) -> Result<Self>{
         let cname = CString::new(name).expect("Could not parse to CString");
         let mut ptr = MaybeUninit::uninit();
@@ -79,13 +86,14 @@ impl BDevDesc{
             )
         };
         SpdkError::from_retval(err)?;
-        Ok(BDevDesc{
+        Ok(BdevDesc{
             ptr: unsafe {
                 ptr.assume_init()
             },
         })
     }
 
+    /// Get bdev handle by bdev descriptor
     pub fn get_bdev(&self) -> Result<BDev>{
         let ptr = unsafe{
             spdk_bdev_desc_get_bdev(self.ptr)
@@ -98,23 +106,30 @@ impl BDevDesc{
         })
     }
 
-    pub fn get_io_channel(&self) -> Result<IoChannel>{
+    /// Get Io channel
+    pub fn get_io_channel(&self) -> Result<BdevIoChannel>{
         let ptr = unsafe{ spdk_bdev_get_io_channel(self.ptr) };
         if ptr.is_null(){
             return Err(SpdkError::from(-1));
         }
-        Ok(IoChannel {ptr})
+        Ok(BdevIoChannel {ptr})
     }
     
+    /// Close bdev
     pub fn close(&self){
         unsafe{
             spdk_bdev_close(self.ptr);
         }
     }
 
+    /// write data at offset
+    /// 
+    /// TODO: check write buffer size and handle return value
+    /// 
+    /// spdk_bdev_write return 0 for success
     pub async fn write(
         &self, 
-        io_channel: &IoChannel, 
+        io_channel: &BdevIoChannel, 
         offset: u64,
         length: u64,
         buf: &[u8]
@@ -133,9 +148,14 @@ impl BDevDesc{
         .await
     }
 
+    /// read data at offset
+    /// 
+    /// TODO: handle return value (should not be ())
+    /// 
+    /// spdk_bdev_read return 0 for success
     pub async fn read(
         &self,
-        io_channel: &IoChannel,
+        io_channel: &BdevIoChannel,
         offset: u64,
         length: u64,
         buf: &mut [u8],
@@ -156,7 +176,7 @@ impl BDevDesc{
 }
 
 
-#[warn(dead_code)]
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct IoWaitEntry{
     wentry: spdk_bdev_io_wait_entry,
@@ -168,6 +188,9 @@ pub struct BdevIo{
 }
 
 impl BdevIo{
+    /// special API in bdev
+    /// 
+    /// should be called manually after an io event 
     pub fn free_io(&self){
         unsafe{
             spdk_bdev_free_io(self.ptr)
@@ -176,12 +199,12 @@ impl BdevIo{
 }
 
 #[derive(Debug)]
-pub struct dma_buf{
+pub struct SpdkDmaBuf{
     buf: *mut c_void,
     length: usize,
 }
 
-impl dma_buf{
+impl SpdkDmaBuf{
     pub fn as_slice(&self) -> &[u8] {
         unsafe { from_raw_parts(self.buf as *mut u8, self.length as usize) }
     }
@@ -200,7 +223,7 @@ impl dma_buf{
         }
     }
 
-    pub fn new(size: u64, alignment: u64) -> Result<dma_buf> {
+    pub fn new(size: u64, alignment: u64) -> Result<SpdkDmaBuf> {
         let buf;
         unsafe {
             buf = spdk_zmalloc(
@@ -215,7 +238,7 @@ impl dma_buf{
         if buf.is_null() {
             Err(SpdkError::from(-1))
         } else {
-            Ok(dma_buf {
+            Ok(SpdkDmaBuf {
                 buf,
                 length: size as usize,
             })
@@ -231,7 +254,7 @@ impl dma_buf{
     }
 }
 
-impl Deref for dma_buf {
+impl Deref for SpdkDmaBuf {
     type Target = *mut c_void;
 
     fn deref(&self) -> &Self::Target {
@@ -239,13 +262,13 @@ impl Deref for dma_buf {
     }
 }
 
-impl DerefMut for dma_buf {
+impl DerefMut for SpdkDmaBuf {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.buf
     }
 }
 
-impl Drop for dma_buf {
+impl Drop for SpdkDmaBuf {
     fn drop(&mut self) {
         unsafe { spdk_dma_free(self.buf as *mut c_void) }
     }
@@ -275,6 +298,7 @@ extern "C" fn callback_with<T>(
         Ok(bs)
     };
     complete.complete(result);
+    // manually free io event in callback function
     unsafe{
         spdk_bdev_free_io(bio);
     }
