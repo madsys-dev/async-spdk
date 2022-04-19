@@ -14,7 +14,7 @@ fn main() {
 async fn async_main() -> Result<()> {
     info!("start main: hello_bdev");
 
-    let bdev_desc = BDevDesc::create_desc("Malloc0")?;
+    let bdev_desc = BdevDesc::create_desc("Malloc0")?;
     info!("get bdev descriptor");
 
     let Bdev = bdev_desc.get_bdev()?;
@@ -24,20 +24,22 @@ async fn async_main() -> Result<()> {
     info!("get block size: {}", blk_size);
 
     let balign = Bdev.get_buf_align();
-    info!("get buffer align");
+    info!("get buffer align: {}", balign);
 
-    let mut write_buf = dma_buf::new(blk_size as u64, balign as u64)?;
-    write_buf.fill(0x5a);
+    let mut write_buf = env::DmaBuf::alloc(blk_size as usize, 0x1000);
+    write_buf.as_mut().fill(0x5a);
 
     let channel = bdev_desc.get_io_channel()?;
+    info!("io channel get");
 
     info!("start writing");
     bdev_desc
         .write(&channel, 0, write_buf.len() as u64, write_buf.as_slice())
         .await?;
+
     info!("finish writing");
 
-    let mut read_buf = dma_buf::new(blk_size as u64, balign as u64)?;
+    let mut read_buf = env::DmaBuf::alloc(blk_size as usize, 0x1000);
 
     info!("start reading");
     bdev_desc
@@ -46,19 +48,19 @@ async fn async_main() -> Result<()> {
     info!("finish reading");
 
     if write_buf.as_slice() != read_buf.as_slice() {
+
         error!("inconsistent data!");
     } else {
         info!("data matches!");
     }
 
-    Bdev.release_io_channel(channel);
-    info!("channel released");
-
     bdev_desc.close();
     info!("bdev closed");
 
-    drop(write_buf);
-    drop(read_buf);
+    // attention! io channel and dma buffer is dropped automatically
+    // since we implement drop trait
+    // don't need to call any free API
+    // TODO: any other struct need to implement DROP for more convenience?
 
     Ok(())
 }

@@ -2,6 +2,7 @@ use crate::complete::LocalComplete;
 use crate::{blob::IoChannel, Result, SpdkError};
 use log::*;
 use spdk_sys::*;
+
 use std::os::raw::c_int;
 use std::{
     ffi::{c_void, CString},
@@ -11,6 +12,7 @@ use std::{
     ops::{Deref, DerefMut},
     slice::{from_raw_parts, from_raw_parts_mut},
 };
+
 
 /// SPDK block device.
 /// TODO: Implement Drop
@@ -45,8 +47,10 @@ impl BDev {
             spdk_put_io_channel(ioc.ptr);
         }
     }
+
 }
 
+/// Bdev
 #[derive(Debug)]
 pub struct BDevDesc {
     ptr: *mut spdk_bdev_desc,
@@ -54,6 +58,7 @@ pub struct BDevDesc {
 
 impl BDevDesc {
     pub fn create_desc(name: &str) -> Result<Self> {
+
         let cname = CString::new(name).expect("Could not parse to CString");
         let mut ptr = MaybeUninit::uninit();
         extern "C" fn callback(
@@ -83,7 +88,6 @@ impl BDevDesc {
 
     pub fn get_bdev(&self) -> Result<BDev> {
         let ptr = unsafe { spdk_bdev_desc_get_bdev(self.ptr) };
-        if ptr.is_null() {
             return Err(SpdkError::from(-1));
         }
         Ok(BDev { ptr })
@@ -103,6 +107,11 @@ impl BDevDesc {
         }
     }
 
+    /// write data at offset
+    /// 
+    /// TODO: check write buffer size and handle return value
+    /// 
+    /// spdk_bdev_write return 0 for success
     pub async fn write(
         &self,
         io_channel: &IoChannel,
@@ -124,9 +133,14 @@ impl BDevDesc {
         .await
     }
 
+    /// read data at offset
+    /// 
+    /// TODO: handle return value (should not be ())
+    /// 
+    /// spdk_bdev_read return 0 for success
     pub async fn read(
         &self,
-        io_channel: &IoChannel,
+        io_channel: &BdevIoChannel,
         offset: u64,
         length: u64,
         buf: &mut [u8],
@@ -160,6 +174,7 @@ pub struct BdevIo {
 impl BdevIo {
     pub fn free_io(&self) {
         unsafe { spdk_bdev_free_io(self.ptr) };
+
     }
 }
 
@@ -188,7 +203,7 @@ impl dma_buf {
         }
     }
 
-    pub fn new(size: u64, alignment: u64) -> Result<dma_buf> {
+    pub fn new(size: u64, alignment: u64) -> Result<SpdkDmaBuf> {
         let buf;
         unsafe {
             buf = spdk_zmalloc(
@@ -203,7 +218,7 @@ impl dma_buf {
         if buf.is_null() {
             Err(SpdkError::from(-1))
         } else {
-            Ok(dma_buf {
+            Ok(SpdkDmaBuf {
                 buf,
                 length: size as usize,
             })
@@ -219,7 +234,7 @@ impl dma_buf {
     }
 }
 
-impl Deref for dma_buf {
+impl Deref for SpdkDmaBuf {
     type Target = *mut c_void;
 
     fn deref(&self) -> &Self::Target {
@@ -227,13 +242,13 @@ impl Deref for dma_buf {
     }
 }
 
-impl DerefMut for dma_buf {
+impl DerefMut for SpdkDmaBuf {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.buf
     }
 }
 
-impl Drop for dma_buf {
+impl Drop for SpdkDmaBuf {
     fn drop(&mut self) {
         unsafe { spdk_dma_free(self.buf as *mut c_void) }
     }
