@@ -6,7 +6,7 @@
           {
             "method": "bdev_malloc_create",
             "params": {
-              "name": "Malloc0",
+              "name": "madio",
               "num_blocks": 32768,
               "block_size": 512
             }
@@ -14,5 +14,5 @@
         ]
       }
     ]
-  }
+}
     

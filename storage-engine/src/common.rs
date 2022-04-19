@@ -4,13 +4,7 @@ use async_spdk::SpdkError;
 
 pub type Result<T> = std::result::Result<T, SpdkError>;
 
-#[derive(Debug)]
-pub struct DeviceEngine{
-    pub bs: Arc<Blobstore>,
-    pub name: String,
-    pub io_size: u64,
-    pub config_file: String,
-}
+
 
 /// supported operation list
 pub enum Op{
@@ -19,6 +13,8 @@ pub enum Op{
     Read,
     /// create a new blob, blob_size should be provided
     CreateBlob,
+    /// finish IO tasks, call spdk_app_fini
+    Fini,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -47,28 +43,16 @@ impl OpCtx{
 }
 
 
-impl DeviceEngine{
-    pub fn get_name(&self) ->Result<String>{
-        Ok(self.name.clone())
-    }
 
-    pub fn get_io_size(&self) -> Result<u64>{
-        Ok(self.io_size)
-    }
-
-    pub fn get_config_file(&self) -> Result<String>{
-        Ok(self.config_file.clone())
-    }
-}
 
 #[derive(Debug)]
 pub struct EngineBlob{
-    pub bl: Arc<Blob>,
+    pub bl: BlobId,
 }
 
 impl EngineBlob{
     pub fn get_id(&self) -> Result<BlobId>{
-        Ok(self.bl.blob_id())
+        Ok(self.bl)
     }
 }
 
