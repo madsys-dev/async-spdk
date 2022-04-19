@@ -1,6 +1,6 @@
 use async_spdk::*;
-use log::*;
 use bdev::*;
+use log::*;
 
 fn main() {
     env_logger::init();
@@ -11,7 +11,7 @@ fn main() {
         .unwrap();
 }
 
-async fn async_main() -> Result<()>{
+async fn async_main() -> Result<()> {
     info!("start main: hello_bdev");
 
     let bdev_desc = BDevDesc::create_desc("Malloc0")?;
@@ -32,18 +32,22 @@ async fn async_main() -> Result<()>{
     let channel = bdev_desc.get_io_channel()?;
 
     info!("start writing");
-    bdev_desc.write(&channel, 0, write_buf.len() as u64, write_buf.as_slice()).await?;
+    bdev_desc
+        .write(&channel, 0, write_buf.len() as u64, write_buf.as_slice())
+        .await?;
     info!("finish writing");
 
     let mut read_buf = dma_buf::new(blk_size as u64, balign as u64)?;
 
     info!("start reading");
-    bdev_desc.read(&channel, 0, read_buf.len() as u64, read_buf.as_mut_slice()).await?;
+    bdev_desc
+        .read(&channel, 0, read_buf.len() as u64, read_buf.as_mut_slice())
+        .await?;
     info!("finish reading");
 
-    if write_buf.as_slice() != read_buf.as_slice(){
+    if write_buf.as_slice() != read_buf.as_slice() {
         error!("inconsistent data!");
-    }else{
+    } else {
         info!("data matches!");
     }
 
@@ -58,4 +62,3 @@ async fn async_main() -> Result<()>{
 
     Ok(())
 }
-

@@ -1,3 +1,4 @@
+use log::*;
 use std::{
     cell::UnsafeCell,
     ffi::c_void,
@@ -5,7 +6,6 @@ use std::{
     pin::Pin,
     task::{Poll, Waker},
 };
-use log::*;
 
 #[derive(Default)]
 pub struct LocalComplete<T> {
