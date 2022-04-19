@@ -2,10 +2,9 @@
 name = "spdk-sys"
 version = "0.1.0"
 authors = ["Runji Wang <wangrunji0408@163.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-bindgen = "^0.54"
-cc= "1.0.46"
+bindgen = "0.59"
