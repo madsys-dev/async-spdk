@@ -13,34 +13,34 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          components: rustfmt, clippy
-      - name: Check code format
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+    - uses: actions/checkout@v3
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        components: rustfmt, clippy
+    - name: Check code format
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all -- --check
 
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Install SPDK
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        components: rustfmt, clippy
+    - name: Install SPDK dependencies
       run: |
-        cd spdk-sys
-        git clone https://github.com/spdk/spdk spdk
-        cd spdk
-        git submodule update --init
+        git submodule update --init --recursive
+        cd spdk-sys/spdk
         sudo scripts/pkgdep.sh
-        ./configure --without-isal
-        make
     - name: Build
-      run: |
-        export CPATH=$PWD/spdk-sys/spdk/build/include
-        export LIBRARY_PATH=$PWD/spdk-sys/target:$PWD/spdk-sys/spdk/build/lib
-        export LD_LIBRARY_PATH=$PWD/spdk-sys/target:$PWD/spdk-sys/spdk/build/lib
-        cargo build
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --all-features
