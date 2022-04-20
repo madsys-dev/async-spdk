@@ -52,11 +52,11 @@ impl BDev {
 
 /// Bdev
 #[derive(Debug)]
-pub struct BDevDesc {
+pub struct BdevDesc {
     ptr: *mut spdk_bdev_desc,
 }
 
-impl BDevDesc {
+impl BdevDesc {
     pub fn create_desc(name: &str) -> Result<Self> {
 
         let cname = CString::new(name).expect("Could not parse to CString");
@@ -81,7 +81,7 @@ impl BDevDesc {
             )
         };
         SpdkError::from_retval(err)?;
-        Ok(BDevDesc {
+        Ok(BdevDesc {
             ptr: unsafe { ptr.assume_init() },
         })
     }
@@ -141,7 +141,7 @@ impl BDevDesc {
     /// spdk_bdev_read return 0 for success
     pub async fn read(
         &self,
-        io_channel: &BdevIoChannel,
+        io_channel: &IoChannel,
         offset: u64,
         length: u64,
         buf: &mut [u8],
@@ -180,12 +180,12 @@ impl BdevIo {
 }
 
 #[derive(Debug)]
-pub struct dma_buf {
+pub struct DmaBuf {
     buf: *mut c_void,
     length: usize,
 }
 
-impl dma_buf {
+impl DmaBuf {
     pub fn as_slice(&self) -> &[u8] {
         unsafe { from_raw_parts(self.buf as *mut u8, self.length as usize) }
     }
@@ -204,7 +204,7 @@ impl dma_buf {
         }
     }
 
-    pub fn new(size: u64, alignment: u64) -> Result<SpdkDmaBuf> {
+    pub fn new(size: u64, alignment: u64) -> Result<DmaBuf> {
         let buf;
         unsafe {
             buf = spdk_zmalloc(
@@ -219,7 +219,7 @@ impl dma_buf {
         if buf.is_null() {
             Err(SpdkError::from(-1))
         } else {
-            Ok(SpdkDmaBuf {
+            Ok(DmaBuf {
                 buf,
                 length: size as usize,
             })
@@ -235,7 +235,7 @@ impl dma_buf {
     }
 }
 
-impl Deref for SpdkDmaBuf {
+impl Deref for DmaBuf {
     type Target = *mut c_void;
 
     fn deref(&self) -> &Self::Target {
@@ -243,13 +243,13 @@ impl Deref for SpdkDmaBuf {
     }
 }
 
-impl DerefMut for SpdkDmaBuf {
+impl DerefMut for DmaBuf {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.buf
     }
 }
 
-impl Drop for SpdkDmaBuf {
+impl Drop for DmaBuf {
     fn drop(&mut self) {
         unsafe { spdk_dma_free(self.buf as *mut c_void) }
     }
