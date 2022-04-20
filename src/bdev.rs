@@ -88,6 +88,7 @@ impl BDevDesc {
 
     pub fn get_bdev(&self) -> Result<BDev> {
         let ptr = unsafe { spdk_bdev_desc_get_bdev(self.ptr) };
+        if ptr.is_null() {
             return Err(SpdkError::from(-1));
         }
         Ok(BDev { ptr })
