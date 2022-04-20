@@ -34,7 +34,7 @@ async fn async_main() -> Result<()> {
 
     info!("start writing");
     bdev_desc
-        .write(&channel, 0, write_buf.len() as u64, write_buf.as_slice())
+        .write(&channel, 0, blk_size as u64, write_buf.as_ref())
         .await?;
 
     info!("finish writing");
@@ -43,12 +43,11 @@ async fn async_main() -> Result<()> {
 
     info!("start reading");
     bdev_desc
-        .read(&channel, 0, read_buf.len() as u64, read_buf.as_mut_slice())
+        .read(&channel, 0, blk_size as u64, read_buf.as_mut())
         .await?;
     info!("finish reading");
 
-    if write_buf.as_slice() != read_buf.as_slice() {
-
+    if write_buf.as_ref() != read_buf.as_ref() {
         error!("inconsistent data!");
     } else {
         info!("data matches!");
