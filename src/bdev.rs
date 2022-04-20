@@ -13,7 +13,6 @@ use std::{
     slice::{from_raw_parts, from_raw_parts_mut},
 };
 
-
 /// SPDK block device.
 /// TODO: Implement Drop
 #[derive(Debug)]
@@ -47,7 +46,6 @@ impl BDev {
             spdk_put_io_channel(ioc.ptr);
         }
     }
-
 }
 
 /// Bdev
@@ -58,7 +56,6 @@ pub struct BdevDesc {
 
 impl BdevDesc {
     pub fn create_desc(name: &str) -> Result<Self> {
-
         let cname = CString::new(name).expect("Could not parse to CString");
         let mut ptr = MaybeUninit::uninit();
         extern "C" fn callback(
@@ -109,9 +106,9 @@ impl BdevDesc {
     }
 
     /// write data at offset
-    /// 
+    ///
     /// TODO: check write buffer size and handle return value
-    /// 
+    ///
     /// spdk_bdev_write return 0 for success
     pub async fn write(
         &self,
@@ -135,9 +132,9 @@ impl BdevDesc {
     }
 
     /// read data at offset
-    /// 
+    ///
     /// TODO: handle return value (should not be ())
-    /// 
+    ///
     /// spdk_bdev_read return 0 for success
     pub async fn read(
         &self,
@@ -175,7 +172,6 @@ pub struct BdevIo {
 impl BdevIo {
     pub fn free_io(&self) {
         unsafe { spdk_bdev_free_io(self.ptr) };
-
     }
 }
 
