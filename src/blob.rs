@@ -14,7 +14,6 @@ pub struct Blobstore {
 // unsafe impl Send for Blobstore {}
 // unsafe impl Sync for Blobstore {}
 
-
 impl Blobstore {
     /// Get the cluster size in bytes.
     pub fn cluster_size(&self) -> u64 {
@@ -106,13 +105,11 @@ pub struct BlobId {
     id: spdk_blob_id,
 }
 
-impl BlobId{
+impl BlobId {
     /// set a specific blob_id
     /// todo: check id legalization
-    pub fn set_blob_id(id: spdk_blob_id) -> Self{
-        Self{
-            id: id,
-        }
+    pub fn set_blob_id(id: spdk_blob_id) -> Self {
+        Self { id: id }
     }
 }
 
@@ -129,7 +126,6 @@ pub struct IoChannel {
 
 // unsafe impl Send for IoChannel {}
 // unsafe impl Sync for IoChannel {}
-
 
 impl Drop for IoChannel {
     fn drop(&mut self) {
