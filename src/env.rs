@@ -6,6 +6,8 @@ pub struct DmaBuf {
     len: usize,
 }
 
+unsafe impl Send for DmaBuf {}
+
 impl DmaBuf {
     /// Allocate a pinned memory buffer with the given size and alignment.
     pub fn alloc(size: usize, align: usize) -> DmaBuf {

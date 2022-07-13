@@ -67,7 +67,7 @@ async fn async_main() -> Result<()> {
 
     /* Issue the read */
     info!("Starting read");
-    blob.read(&channel, 0, read_buf.as_mut()).await?;
+    blob.read(channel, 0, read_buf.as_mut()).await?;
     info!("Finished read");
 
     /* Now let's make sure things match. */
@@ -86,7 +86,7 @@ async fn async_main() -> Result<()> {
 
     // XXX: io_channel must be dropped before unload.
     // TODO: find a way to force that in Rust
-    drop(channel);
+    // drop(channel);
     blobstore.unload().await?;
     info!("Blobstore unloaded");
 
