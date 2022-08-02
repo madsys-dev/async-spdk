@@ -15,6 +15,7 @@ fn main() {
     println!("cargo:rustc-link-lib=uuid");
     println!("cargo:rustc-link-lib=crypto");
     println!("cargo:rustc-link-lib=stdc++");
+    println!("cargo:rustc-link-lib=ssl");
     println!(
         "cargo:rustc-link-search=native={}",
         env::var("OUT_DIR").unwrap()
