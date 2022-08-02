@@ -62,7 +62,7 @@ impl Blobstore {
 
     pub async fn load(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore> {
         let ptr = do_async(|arg| unsafe {
-            spdk_bs_load(bs_dev, std::ptr::null_mut(), Some(callback_with), arg);
+            spdk_bs_load(bs_dev.ptr, std::ptr::null_mut(), Some(callback_with), arg);
         })
         .await?;
         Ok(Blobstore { ptr })
