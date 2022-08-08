@@ -168,7 +168,7 @@ impl Blob {
     }
 
     /// Read data from a blob.
-    pub async fn read(&self, io_channel: IoChannel, offset: u64, buf: &mut [u8]) -> Result<()> {
+    pub async fn read(&self, io_channel: &IoChannel, offset: u64, buf: &mut [u8]) -> Result<()> {
         assert_eq!(buf.len() as u64 % self.io_unit_size, 0);
         let units = buf.len() as u64 / self.io_unit_size;
         do_async(|arg| unsafe {
