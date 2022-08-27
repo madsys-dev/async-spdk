@@ -25,6 +25,10 @@ impl AppOpts {
         }
     }
 
+    pub fn get_opts(&self) -> spdk_app_opts{
+        self.clone().0
+    }
+
     pub fn name(mut self, name: &str) -> Self {
         self.0.name = CString::new(name)
             .expect("Couldn't create a string")

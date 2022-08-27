@@ -3,7 +3,6 @@ use crate::{blob::IoChannel, Result, SpdkError};
 use log::*;
 use spdk_sys::*;
 
-use std::os::raw::c_int;
 use std::{
     ffi::{c_void, CString},
     mem::MaybeUninit,
