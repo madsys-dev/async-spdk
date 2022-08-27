@@ -1,3 +1,4 @@
-[submodule "spdk"]
+[submodule "spdk-sys/spdk"]
 	path = spdk-sys/spdk
-	url = https://github.com/spdk/spdk.git
+	url = https://github.com/coolyjg/spdk
+	branch = 7.4.5-integration
