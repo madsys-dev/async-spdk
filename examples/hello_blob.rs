@@ -86,7 +86,7 @@ async fn async_main() -> Result<()> {
 
     // XXX: io_channel must be dropped before unload.
     // TODO: find a way to force that in Rust
-    // drop(channel);
+    drop(channel);
     blobstore.unload().await?;
     info!("Blobstore unloaded");
 
