@@ -11,6 +11,7 @@ use std::{
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
 
+#[derive(Clone)]
 pub struct AppOpts(spdk_app_opts);
 
 impl AppOpts {
