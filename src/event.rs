@@ -26,7 +26,7 @@ impl AppOpts {
         }
     }
 
-    pub fn get_opts(&self) -> spdk_app_opts{
+    pub fn get_opts(&self) -> spdk_app_opts {
         self.clone().0
     }
 

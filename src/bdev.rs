@@ -1,3 +1,5 @@
+//! BDev wrapper
+
 use crate::complete::LocalComplete;
 use crate::{blob::IoChannel, Result, SpdkError};
 use log::*;
