@@ -91,9 +91,9 @@ fn build_from_source() {
     let dst = PathBuf::from(env::var("OUT_DIR").unwrap()).join("libspdk_fat.so");
 
     // Return if the outputs exist.
-    if dst.exists() {
-        return;
-    }
+    // if dst.exists() {
+    //     return;
+    // }
 
     // Initialize git submodule if necessary.
     if !Path::new("spdk/.git").exists() {

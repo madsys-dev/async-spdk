@@ -2,13 +2,28 @@
 
 use std::mem::MaybeUninit;
 
+use log::*;
 use crate::blob::IoChannel;
+use crate::event::SpdkEvent;
 use crate::{blob_bdev::BlobStoreBDev, complete::LocalComplete, error::*};
 use spdk_sys::*;
 use std::ffi::{c_void, CString};
 use std::os::raw::c_int;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct SpdkFileStat {
+    ptr: *mut spdk_file_stat,
+}
+
+impl Default for SpdkFileStat {
+    fn default() -> Self {
+        Self {
+            ptr: std::ptr::null_mut(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct SpdkFilesystem {
     ptr: *mut spdk_filesystem,
 }
@@ -177,25 +192,12 @@ impl SpdkFile {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct SpdkFileStat {
-    ptr: *mut spdk_file_stat,
-}
-
-impl Default for SpdkFileStat {
-    fn default() -> Self {
-        Self {
-            ptr: std::ptr::null_mut(),
-        }
-    }
-}
-
 /// Async API
 impl SpdkFilesystem {
     /// init blobfs from bs_dev
     pub async fn init(bs_dev: &mut BlobStoreBDev, opts: &mut SpdkBlobfsOpts) -> Result<Self> {
         let ptr = do_async(|arg| unsafe {
-            spdk_fs_init(bs_dev.ptr, &mut opts.0, None, Some(callback_with), arg);
+            spdk_fs_init(bs_dev.ptr, &mut opts.0, Some(send_request_fn), Some(callback_with), arg);
         })
         .await?;
         Ok(SpdkFilesystem { ptr })
@@ -204,7 +206,7 @@ impl SpdkFilesystem {
     /// load blobfs from bs_dev
     pub async fn load(bs_dev: &mut BlobStoreBDev) -> Result<Self> {
         let ptr = do_async(|arg| unsafe {
-            spdk_fs_load(bs_dev.ptr, None, Some(callback_with), arg);
+            spdk_fs_load(bs_dev.ptr, Some(send_request_fn), Some(callback_with), arg);
         })
         .await?;
         Ok(SpdkFilesystem { ptr })
@@ -307,7 +309,8 @@ impl SpdkFilesystem {
 
     pub fn create(&self, ctx: &SpdkFsThreadCtx, name: &str) -> Result<()> {
         let cname = CString::new(name).expect("Failt to parse name");
-        let ret = unsafe { spdk_fs_create_file(self.ptr, ctx.ptr, cname.as_ptr()) };
+        let fs = self.clone();
+        let ret = unsafe { spdk_fs_create_file(fs.ptr, ctx.ptr, cname.as_ptr()) };
         if ret != 0 {
             return Err(SpdkError::from(-1));
         }
@@ -394,6 +397,12 @@ impl SpdkBlobfsOpts {
             Ok(SpdkBlobfsOpts(fs_opts.assume_init()))
         }
     }
+}
+
+unsafe extern "C" fn send_request_fn(f: Option<unsafe extern "C" fn(*mut c_void)>, arg: *mut c_void){
+    let mut e = SpdkEvent::alloc(1, f.unwrap() as *mut c_void, arg).unwrap();
+    info!("call send_request");
+    e.call();
 }
 
 extern "C" fn callback(arg: *mut c_void, fserrno: c_int) {

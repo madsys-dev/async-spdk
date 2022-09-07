@@ -1,4 +1,5 @@
-use crate::complete::LocalComplete;
+use crate::{complete::LocalComplete, SpdkError};
+use crate::error::*;
 use spdk_sys::*;
 use std::{
     cell::RefCell,
@@ -10,6 +11,7 @@ use std::{
     rc::Rc,
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
+use log::*;
 
 #[derive(Clone)]
 pub struct AppOpts(spdk_app_opts);
@@ -44,14 +46,17 @@ impl AppOpts {
         self
     }
 
-    pub fn reactor_mask(mut self, mask: &str) -> Self{
-        self.0.reactor_mask = CString::new(mask)
-            .expect("Fail to parse mask")
-            .into_raw();
+    pub fn reactor_mask(mut self, mask: &str) -> Self {
+        self.0.reactor_mask = CString::new(mask).expect("Fail to parse mask").into_raw();
         self
     }
 
-    pub fn main_core(mut self, main_core: i32)->Self{
+    pub fn set_log(mut self, log_level: i32) -> Self {
+        self.0.print_level = log_level;
+        self
+    }
+
+    pub fn main_core(mut self, main_core: i32) -> Self {
         self.0.main_core = main_core;
         self
     }
@@ -162,5 +167,42 @@ impl Drop for AppOpts {
 fn drop_if_not_null(string: *const c_char) {
     if !string.is_null() {
         unsafe { CString::from_raw(string as *mut c_char) };
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SpdkEvent {
+    ptr: *mut spdk_event,
+}
+
+impl SpdkEvent {
+    pub fn alloc(
+        lcore: u32,
+        // arg1: impl FnOnce(*mut c_void, *mut c_void),
+        arg1: *mut c_void,
+        arg2: *mut c_void,
+    ) -> Result<Self> {
+        let ptr = unsafe { spdk_event_allocate(lcore, Some(callback2), arg1, arg2) };
+        if ptr.is_null() {
+            return Err(SpdkError::from(-1));
+        }
+        Ok(SpdkEvent { ptr })
+    }
+
+    pub fn call(&self) -> Result<()>{
+        info!("before call");
+        unsafe{
+            spdk_event_call(self.ptr);
+        }
+        Ok(())
+    }
+}
+
+extern "C" fn callback2(arg1: *mut c_void, arg2: *mut c_void){
+    info!("execution function is called");
+    let f = arg1 as *mut fn(*mut c_void);
+    info!("transfer...");
+    unsafe{
+        (*f)(arg2);
     }
 }

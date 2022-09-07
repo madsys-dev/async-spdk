@@ -1,17 +1,24 @@
 {
-    "subsystems": [
-      {
-        "subsystem": "bdev",
-        "config": [
-          {
-            "method": "bdev_malloc_create",
-            "params": {
-              "name": "Malloc0",
-              "num_blocks": 32768,
-              "block_size": 512
-            }
-          }
-        ]
-      }
-    ]
-  }
+"subsystems": [
+{
+"subsystem": "bdev",
+"config": [
+{
+"method": "bdev_nvme_attach_controller",
+"params": {
+"trtype": "PCIe",
+"name":"Nvme0",
+"traddr":"0000:02:00.0"
+}
+},{
+"method": "bdev_nvme_attach_controller",
+"params": {
+"trtype": "PCIe",
+"name":"Nvme1",
+"traddr":"0000:06:00.0"
+}
+}
+]
+}
+]
+}
