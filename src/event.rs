@@ -44,6 +44,18 @@ impl AppOpts {
         self
     }
 
+    pub fn reactor_mask(mut self, mask: &str) -> Self{
+        self.0.reactor_mask = CString::new(mask)
+            .expect("Fail to parse mask")
+            .into_raw();
+        self
+    }
+
+    pub fn main_core(mut self, main_core: i32)->Self{
+        self.0.main_core = main_core;
+        self
+    }
+
     pub fn block_on<F: Future>(mut self, future: F) -> F::Output {
         extern "C" fn start_fn<F: Future>(arg: *mut c_void) {
             let (future, output_ptr) = unsafe { *Box::from_raw(arg as *mut (F, *mut F::Output)) };
