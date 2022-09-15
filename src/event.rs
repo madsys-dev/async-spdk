@@ -1,5 +1,6 @@
-use crate::{complete::LocalComplete, SpdkError};
 use crate::error::*;
+use crate::{complete::LocalComplete, SpdkError};
+use log::*;
 use spdk_sys::*;
 use std::{
     cell::RefCell,
@@ -11,7 +12,6 @@ use std::{
     rc::Rc,
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
-use log::*;
 
 #[derive(Clone)]
 pub struct AppOpts(spdk_app_opts);
@@ -73,8 +73,8 @@ impl AppOpts {
                 Some(start_fn::<F>),
                 Box::into_raw(Box::new((future, output.as_mut_ptr()))) as *mut c_void,
             );
-            spdk_app_fini();
             assert_eq!(err, 0);
+            spdk_app_fini();
             output.assume_init()
         }
     }
@@ -119,7 +119,7 @@ fn spawn_internal<F: Future>(future: F, output_ptr: *mut F::Output) -> JoinHandl
                     task.output.complete(output);
                 } else {
                     task.output_ptr.write(output);
-                    spdk_app_stop(0);
+                    // spdk_app_stop(0);
                 }
                 spdk_poller_unregister(&mut task.poller);
                 Rc::from_raw(cell_ptr);
@@ -170,6 +170,18 @@ fn drop_if_not_null(string: *const c_char) {
     }
 }
 
+pub fn send_shutdown(){
+    unsafe{
+        spdk_app_start_shutdown();
+    }
+}
+
+pub fn app_fini(){
+    unsafe{
+        spdk_app_fini();
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SpdkEvent {
     ptr: *mut spdk_event,
@@ -178,7 +190,6 @@ pub struct SpdkEvent {
 impl SpdkEvent {
     pub fn alloc(
         lcore: u32,
-        // arg1: impl FnOnce(*mut c_void, *mut c_void),
         arg1: *mut c_void,
         arg2: *mut c_void,
     ) -> Result<Self> {
@@ -186,23 +197,23 @@ impl SpdkEvent {
         if ptr.is_null() {
             return Err(SpdkError::from(-1));
         }
+        info!("alloc event success");
         Ok(SpdkEvent { ptr })
     }
 
-    pub fn call(&self) -> Result<()>{
+    pub fn call(&self) -> Result<()> {
         info!("before call");
-        unsafe{
+        unsafe {
             spdk_event_call(self.ptr);
         }
         Ok(())
     }
 }
 
-extern "C" fn callback2(arg1: *mut c_void, arg2: *mut c_void){
+extern "C" fn callback2(arg1: *mut c_void, arg2: *mut c_void) {
     info!("execution function is called");
     let f = arg1 as *mut fn(*mut c_void);
-    info!("transfer...");
-    unsafe{
+    unsafe {
         (*f)(arg2);
     }
 }

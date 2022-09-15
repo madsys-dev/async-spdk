@@ -4,6 +4,7 @@ use std::{
     ffi::{c_void, CString},
     os::raw::c_int,
 };
+use log::*;
 
 pub struct Poller {
     ptr: *mut spdk_poller,
@@ -28,6 +29,7 @@ impl Poller {
             // FIXME: proper error
             return Err(SpdkError::from(-1));
         }
+        info!("poller registered");
         Ok(Poller { ptr, closure })
     }
 

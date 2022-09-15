@@ -1,11 +1,13 @@
-//! BlobStore FileSystem
+//! BlobStore FileSystem wrapper
+//!
+//! According to SPDK doc, only synchronous API is tested (except `init`, `load`, `unload`)
 
 use std::mem::MaybeUninit;
 
-use log::*;
 use crate::blob::IoChannel;
 use crate::event::SpdkEvent;
 use crate::{blob_bdev::BlobStoreBDev, complete::LocalComplete, error::*};
+use log::*;
 use spdk_sys::*;
 use std::ffi::{c_void, CString};
 use std::os::raw::c_int;
@@ -23,10 +25,19 @@ impl Default for SpdkFileStat {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct SpdkFilesystem {
-    ptr: *mut spdk_filesystem,
+    pub ptr: *mut spdk_filesystem,
 }
+
+impl Default for SpdkFilesystem{
+    fn default() -> Self {
+        Self { ptr: std::ptr::null_mut() }
+    }
+}
+
+unsafe impl Sync for SpdkFilesystem {}
+unsafe impl Send for SpdkFilesystem {}
 
 #[derive(Debug)]
 pub struct SpdkFile {
@@ -197,7 +208,21 @@ impl SpdkFilesystem {
     /// init blobfs from bs_dev
     pub async fn init(bs_dev: &mut BlobStoreBDev, opts: &mut SpdkBlobfsOpts) -> Result<Self> {
         let ptr = do_async(|arg| unsafe {
-            spdk_fs_init(bs_dev.ptr, &mut opts.0, Some(send_request_fn), Some(callback_with), arg);
+            spdk_fs_init(
+                bs_dev.ptr,
+                &mut opts.0,
+                Some(send_request_fn),
+                Some(callback_with),
+                arg,
+            );
+        })
+        .await?;
+        Ok(SpdkFilesystem { ptr })
+    }
+
+    pub async fn init_async(bs_dev: &mut BlobStoreBDev, opts: &mut SpdkBlobfsOpts) -> Result<Self> {
+        let ptr = do_async(|arg| unsafe {
+            spdk_fs_init(bs_dev.ptr, &mut opts.0, None, Some(callback_with), arg);
         })
         .await?;
         Ok(SpdkFilesystem { ptr })
@@ -270,6 +295,20 @@ impl SpdkFilesystem {
 
 /// Sync API
 impl SpdkFilesystem {
+    pub fn unload_sync(&self) -> Result<()>{
+        unsafe {
+            spdk_fs_unload(self.ptr, Some(unload_callback), std::ptr::null_mut());
+        }
+        Ok(())
+    }
+
+    pub fn is_null(&self) -> bool{
+        if self.ptr.is_null(){
+            return true;
+        }
+        false
+    }
+
     /// Allocate an I/O channel for async operations
     pub fn alloc_io_channel(&self) -> Result<IoChannel> {
         let ptr = unsafe { spdk_fs_alloc_io_channel(self.ptr) };
@@ -277,6 +316,11 @@ impl SpdkFilesystem {
             return Err(SpdkError::from(-1));
         }
         Ok(IoChannel { ptr })
+    }
+
+    /// Initialize from raw pointer
+    pub fn init_from_raw(p: *mut spdk_filesystem) -> Self{
+        Self { ptr: p }
     }
 
     /// Free I/O channel from blobfs
@@ -399,14 +443,23 @@ impl SpdkBlobfsOpts {
     }
 }
 
-unsafe extern "C" fn send_request_fn(f: Option<unsafe extern "C" fn(*mut c_void)>, arg: *mut c_void){
-    let mut e = SpdkEvent::alloc(1, f.unwrap() as *mut c_void, arg).unwrap();
+unsafe extern "C" fn send_request_fn(
+    f: Option<unsafe extern "C" fn(*mut c_void)>,
+    arg: *mut c_void,
+) {
+    let e = SpdkEvent::alloc(0, f.unwrap() as *mut c_void, arg).unwrap();
     info!("call send_request");
-    e.call();
+    e.call().unwrap();
 }
 
 extern "C" fn callback(arg: *mut c_void, fserrno: c_int) {
     callback_with(arg, (), fserrno);
+}
+
+extern "C" fn unload_callback(_arg: *mut c_void, fserrno: c_int){
+    if fserrno !=0 {
+        error!("error in unload callback");
+    }
 }
 
 extern "C" fn callback_with<T>(arg: *mut c_void, fs: T, fserrno: c_int) {

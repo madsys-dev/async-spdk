@@ -12,6 +12,19 @@
             }
           }
         ]
+      },
+      {
+        "subsystem": "bdev",
+        "config": [
+          {
+            "method": "bdev_malloc_create",
+            "params": {
+              "name": "Malloc1",
+              "num_blocks": 32768,
+              "block_size": 512
+            }
+          }
+        ]
       }
     ]
   }
