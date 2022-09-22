@@ -1,3 +1,4 @@
+[![Rust](https://github.com/madsys-dev/async-spdk/workflows/Rust/badge.svg?branch=main)](https://github.com/madsys-dev/async-spdk/actions)
 
 - use ./configure --without-isal instead of ./configure to avoid isa-unsupported or certain error when congifure SPDK
 - run as rooter
