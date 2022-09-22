@@ -2,10 +2,7 @@
 
 use std::{
     cell::RefCell,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
 };
 
 use async_spdk::{
