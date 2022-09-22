@@ -1,4 +1,4 @@
-use async_spdk::{*, event::app_stop};
+use async_spdk::{event::app_stop, *};
 use bdev::*;
 use log::*;
 

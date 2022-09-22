@@ -30,9 +30,11 @@ pub struct SpdkFilesystem {
     pub ptr: *mut spdk_filesystem,
 }
 
-impl Default for SpdkFilesystem{
+impl Default for SpdkFilesystem {
     fn default() -> Self {
-        Self { ptr: std::ptr::null_mut() }
+        Self {
+            ptr: std::ptr::null_mut(),
+        }
     }
 }
 
@@ -295,15 +297,15 @@ impl SpdkFilesystem {
 
 /// Sync API
 impl SpdkFilesystem {
-    pub fn unload_sync(&self) -> Result<()>{
+    pub fn unload_sync(&self) -> Result<()> {
         unsafe {
             spdk_fs_unload(self.ptr, Some(unload_callback), std::ptr::null_mut());
         }
         Ok(())
     }
 
-    pub fn is_null(&self) -> bool{
-        if self.ptr.is_null(){
+    pub fn is_null(&self) -> bool {
+        if self.ptr.is_null() {
             return true;
         }
         false
@@ -319,7 +321,7 @@ impl SpdkFilesystem {
     }
 
     /// Initialize from raw pointer
-    pub fn init_from_raw(p: *mut spdk_filesystem) -> Self{
+    pub fn init_from_raw(p: *mut spdk_filesystem) -> Self {
         Self { ptr: p }
     }
 
@@ -448,7 +450,7 @@ unsafe extern "C" fn send_request_fn(
     arg: *mut c_void,
 ) {
     let f = f.unwrap();
-    let e = SpdkEvent::alloc(0, f as *const() as *mut c_void, arg).unwrap();
+    let e = SpdkEvent::alloc(0, f as *const () as *mut c_void, arg).unwrap();
     e.call().unwrap();
 }
 
@@ -456,8 +458,8 @@ extern "C" fn callback(arg: *mut c_void, fserrno: c_int) {
     callback_with(arg, (), fserrno);
 }
 
-extern "C" fn unload_callback(_arg: *mut c_void, fserrno: c_int){
-    if fserrno !=0 {
+extern "C" fn unload_callback(_arg: *mut c_void, fserrno: c_int) {
+    if fserrno != 0 {
         error!("error in unload callback");
     }
 }

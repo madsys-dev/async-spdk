@@ -113,9 +113,7 @@ fn spawn_internal<F: Future>(future: F, output_ptr: *mut F::Output) -> JoinHandl
         let mut context = Context::from_waker(&task.waker);
         let future = unsafe { Pin::new_unchecked(&mut task.future) };
         match future.poll(&mut context) {
-            Poll::Pending => unsafe { 
-                spdk_poller_pause(task.poller) 
-            },
+            Poll::Pending => unsafe { spdk_poller_pause(task.poller) },
             Poll::Ready(output) => unsafe {
                 if task.output_ptr.is_null() {
                     task.output.complete(output);
@@ -172,20 +170,20 @@ fn drop_if_not_null(string: *const c_char) {
     }
 }
 
-pub fn send_shutdown(){
-    unsafe{
+pub fn send_shutdown() {
+    unsafe {
         spdk_app_start_shutdown();
     }
 }
 
-pub fn app_stop(){
-    unsafe{
+pub fn app_stop() {
+    unsafe {
         spdk_app_stop(0);
     }
 }
 
-pub fn app_fini(){
-    unsafe{
+pub fn app_fini() {
+    unsafe {
         spdk_app_fini();
     }
 }
@@ -196,11 +194,7 @@ pub struct SpdkEvent {
 }
 
 impl SpdkEvent {
-    pub fn alloc(
-        lcore: u32,
-        arg1: *mut c_void,
-        arg2: *mut c_void,
-    ) -> Result<Self> {
+    pub fn alloc(lcore: u32, arg1: *mut c_void, arg2: *mut c_void) -> Result<Self> {
         let ptr = unsafe { spdk_event_allocate(lcore, Some(callback2), arg1, arg2) };
         if ptr.is_null() {
             return Err(SpdkError::from(-1));
@@ -217,6 +211,6 @@ impl SpdkEvent {
 }
 
 extern "C" fn callback2(arg1: *mut c_void, arg2: *mut c_void) {
-    let f: fn(*mut c_void) = unsafe{std::mem::transmute(arg1)};
+    let f: fn(*mut c_void) = unsafe { std::mem::transmute(arg1) };
     f(arg2);
 }

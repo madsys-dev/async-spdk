@@ -1,13 +1,21 @@
 //! This is an example for syncronous API of blobfs
 
-use std::{sync::{
-    // atomic::AtomicBool, 
-    Arc, Mutex}, cell::RefCell};
+use std::{
+    cell::RefCell,
+    sync::{
+        // atomic::AtomicBool,
+        Arc,
+        Mutex,
+    },
+};
 // use std::cell::RefCell;
 // use lazy_static::lazy_static;
 
 use async_spdk::{
-*, event::{send_shutdown, app_fini, app_stop}, thread::Poller};
+    event::{app_fini, app_stop, send_shutdown},
+    thread::Poller,
+    *,
+};
 use blobfs::*;
 use log::*;
 
@@ -51,7 +59,7 @@ fn test_fs(
     shutdown: Arc<Mutex<bool>>,
 ) -> Result<()> {
     loop {
-        if *fflag.lock().unwrap() == true{
+        if *fflag.lock().unwrap() == true {
             break;
         }
     }
@@ -59,26 +67,26 @@ fn test_fs(
     let fs = fs.lock().unwrap();
     info!("App thread get fs handle");
 
-    if fs.is_null(){
+    if fs.is_null() {
         info!("fs pointer is null");
-        return Ok(())
+        return Ok(());
     }
 
     let ctx = fs.alloc_thread_ctx()?;
     info!("App thread alloc ctx");
 
-    if fs.is_null(){
+    if fs.is_null() {
         info!("fs pointer is null");
-        return Ok(())
+        return Ok(());
     }
 
     info!("start create");
     fs.create(&ctx, "file1")?;
     info!("Create file1 success");
 
-    if fs.is_null(){
+    if fs.is_null() {
         info!("fs pointer is null");
-        return Ok(())
+        return Ok(());
     }
 
     fs.delete(&ctx, "file1")?;
@@ -116,8 +124,8 @@ async fn async_main(
     let shutdown_copy = shutdown.clone();
     let shutdown_poller_copy = shutdown_poller.clone();
 
-    *shutdown_poller.lock().unwrap() = Poller::register(move ||{
-        if *shutdown_copy.lock().unwrap() == true{
+    *shutdown_poller.lock().unwrap() = Poller::register(move || {
+        if *shutdown_copy.lock().unwrap() == true {
             info!("shutdonw poller receive shutdown signal");
             shutdown_fs.lock().unwrap().unload_sync();
             shutdown_poller_copy.lock().unwrap().unregister();
