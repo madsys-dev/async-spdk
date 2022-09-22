@@ -1,4 +1,4 @@
-use async_spdk::*;
+use async_spdk::{*, event::app_stop};
 use log::*;
 
 fn main() {
@@ -89,6 +89,8 @@ async fn async_main() -> Result<()> {
     drop(channel);
     blobstore.unload().await?;
     info!("Blobstore unloaded");
+
+    app_stop();
 
     Ok(())
 }

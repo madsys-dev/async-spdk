@@ -7,7 +7,7 @@ use std::{sync::{
 // use lazy_static::lazy_static;
 
 use async_spdk::{
-*, event::{send_shutdown, app_fini}, thread::Poller};
+*, event::{send_shutdown, app_fini, app_stop}, thread::Poller};
 use blobfs::*;
 use log::*;
 
@@ -22,6 +22,7 @@ fn main() {
     let mut fsflag = Arc::new(Mutex::new(false));
     let mut fs = Arc::new(Mutex::new(SpdkFilesystem::default()));
     let mut shutdown = Arc::new(Mutex::new(false));
+    let mut shutdown_poller = Arc::new(Mutex::new(Poller::default()));
 
     let ff2 = fsflag.clone();
     let fs2 = fs.clone();
@@ -31,10 +32,9 @@ fn main() {
         event::AppOpts::new()
             .name("hello_blobfs")
             .config_file(&std::env::args().nth(1).expect("no config file"))
-            .reactor_mask("0x3")
-            .block_on(async_main(ff2, fs2, shutdown2))
+            .reactor_mask("0x1")
+            .block_on(async_main(ff2, fs2, shutdown2, shutdown_poller))
             .unwrap();
-        app_fini();
     });
 
     let ff3 = fsflag.clone();
@@ -86,38 +86,11 @@ fn test_fs(
 
     // send_shutdown();
 
-    *shutdown.lock().unwrap() = true;
-    info!("set shutdown to true");
-
-    // let fs = FS.unwrap().lock().unwrap();
-    // unsafe {
-    //     let fs = FS.lock().unwrap();
-    //     info!("App thread get fs handle");
-
-    //     let ctx = fs.unwrap().alloc_thread_ctx()?;
-    //     info!("App thread alloc ctx");
-
-    //     fs.unwrap().create(&ctx, "file1")?;
-    //     info!("Create file1 success");
-
-    //     fs.unwrap().delete(&ctx, "file1")?;
-    //     info!("Delete file1 success");
-    // };
-    // let fs = unsafe {let t = FS.lock().unwrap().as_ref();
-    // t};
-    // info!("App thread get fs handle");
-
-    // let mut ctx = fs.unwrap().alloc_thread_ctx()?;
-    // info!("App thread alloc ctx");
-
-    // fs.unwrap().create(&ctx, "file1")?;
-    // info!("Create file1 success");
-
-    // fs.unwrap().delete(&ctx, "file1")?;
-    // info!("Delete file1 success");
-
     // drop(fs);
     // info!("App thread drop fs");
+
+    *shutdown.lock().unwrap() = true;
+    info!("set shutdown to true");
 
     Ok(())
 }
@@ -126,13 +99,9 @@ async fn async_main(
     fflag: Arc<Mutex<bool>>,
     fs: Arc<Mutex<SpdkFilesystem>>,
     shutdown: Arc<Mutex<bool>>,
+    shutdown_poller: Arc<Mutex<Poller>>,
 ) -> Result<()> {
     info!("start main: hello_blobfs");
-
-    if *fflag.lock().unwrap() == true{
-        info!("flag is ok");
-        return Ok(());
-    }
 
     let mut bdev = blob_bdev::BlobStoreBDev::create("Malloc0")?;
     info!("BlobStoreBdev created");
@@ -145,13 +114,14 @@ async fn async_main(
 
     let shutdown_fs = fs.clone();
     let shutdown_copy = shutdown.clone();
+    let shutdown_poller_copy = shutdown_poller.clone();
 
-    let mut shutdown_poller = Poller::register(move ||{
-        info!("shutdown poller is called");
+    *shutdown_poller.lock().unwrap() = Poller::register(move ||{
         if *shutdown_copy.lock().unwrap() == true{
             info!("shutdonw poller receive shutdown signal");
-            shutdown_fs.lock().unwrap().unload();
-            info!("blobfs unload success");
+            shutdown_fs.lock().unwrap().unload_sync();
+            shutdown_poller_copy.lock().unwrap().unregister();
+            app_stop();
         }
         true
     })?;

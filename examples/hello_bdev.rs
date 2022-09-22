@@ -1,4 +1,4 @@
-use async_spdk::*;
+use async_spdk::{*, event::app_stop};
 use bdev::*;
 use log::*;
 
@@ -12,54 +12,54 @@ fn main() {
 }
 
 async fn async_main() -> Result<()> {
-    info!("start main: hello_bdev");
+    info!("Start main: hello_bdev");
 
     let bdev_desc = BdevDesc::create_desc("Malloc0")?;
-    info!("get bdev descriptor");
+    info!("Get bdev descriptor");
 
     let Bdev = bdev_desc.get_bdev()?;
-    info!("get bdev pointer by descriptor");
+    info!("Get bdev pointer by descriptor");
 
     let blk_size = Bdev.get_block_size();
-    info!("get block size: {}", blk_size);
+    info!("Get block size: {}", blk_size);
 
     let balign = Bdev.get_buf_align();
-    info!("get buffer align: {}", balign);
+    info!("Get buffer align: {}", balign);
 
     let mut write_buf = env::DmaBuf::alloc(blk_size as usize, 0x1000);
     write_buf.as_mut().fill(0x5a);
 
     let channel = bdev_desc.get_io_channel()?;
-    info!("io channel get");
+    info!("IO channel get");
 
-    info!("start writing");
     bdev_desc
         .write(&channel, 0, blk_size as u64, write_buf.as_ref())
         .await?;
 
-    info!("finish writing");
+    info!("Finish writing");
 
     let mut read_buf = env::DmaBuf::alloc(blk_size as usize, 0x1000);
 
-    info!("start reading");
     bdev_desc
         .read(&channel, 0, blk_size as u64, read_buf.as_mut())
         .await?;
-    info!("finish reading");
+    info!("Finish reading");
 
     if write_buf.as_ref() != read_buf.as_ref() {
-        error!("inconsistent data!");
+        error!("Inconsistent data!");
     } else {
-        info!("data matches!");
+        info!("Data matches!");
     }
 
     bdev_desc.close();
-    info!("bdev closed");
+    info!("Bdev closed");
 
     // attention! io channel and dma buffer is dropped automatically
     // since we implement drop trait
     // don't need to call any free API
     // TODO: any other struct need to implement DROP for more convenience?
+
+    app_stop();
 
     Ok(())
 }

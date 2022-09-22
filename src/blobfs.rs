@@ -447,8 +447,8 @@ unsafe extern "C" fn send_request_fn(
     f: Option<unsafe extern "C" fn(*mut c_void)>,
     arg: *mut c_void,
 ) {
-    let e = SpdkEvent::alloc(0, f.unwrap() as *mut c_void, arg).unwrap();
-    info!("call send_request");
+    let f = f.unwrap();
+    let e = SpdkEvent::alloc(0, f as *const() as *mut c_void, arg).unwrap();
     e.call().unwrap();
 }
 

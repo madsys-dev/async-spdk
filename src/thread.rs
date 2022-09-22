@@ -12,6 +12,15 @@ pub struct Poller {
     closure: Box<dyn Fn() -> bool>,
 }
 
+unsafe impl Send for Poller{}
+unsafe impl Sync for Poller{}
+
+impl Default for Poller{
+    fn default() -> Self {
+        Self { ptr: std::ptr::null_mut(), closure: Box::new(|| {true}) }
+    }
+}
+
 impl Poller {
     /// Registers a poller with spdk.
     ///
@@ -29,7 +38,6 @@ impl Poller {
             // FIXME: proper error
             return Err(SpdkError::from(-1));
         }
-        info!("poller registered");
         Ok(Poller { ptr, closure })
     }
 
@@ -44,6 +52,12 @@ impl Poller {
     pub fn resume(&mut self) {
         unsafe {
             spdk_poller_resume(self.ptr);
+        }
+    }
+
+    pub fn unregister(&mut self){
+        unsafe{
+            spdk_poller_unregister(&mut self.ptr);
         }
     }
 }
