@@ -46,6 +46,7 @@ impl AppOpts {
         self
     }
 
+    /// Reactor mask
     pub fn reactor_mask(mut self, mask: &str) -> Self {
         self.0.reactor_mask = CString::new(mask).expect("Fail to parse mask").into_raw();
         self
@@ -194,6 +195,7 @@ pub struct SpdkEvent {
 }
 
 impl SpdkEvent {
+    /// allocate a event
     pub fn alloc(lcore: u32, arg1: *mut c_void, arg2: *mut c_void) -> Result<Self> {
         let ptr = unsafe { spdk_event_allocate(lcore, Some(callback2), arg1, arg2) };
         if ptr.is_null() {
@@ -202,6 +204,7 @@ impl SpdkEvent {
         Ok(SpdkEvent { ptr })
     }
 
+    /// put this event to specific reactor event ring
     pub fn call(&self) -> Result<()> {
         unsafe {
             spdk_event_call(self.ptr);

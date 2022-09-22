@@ -3,13 +3,10 @@
 use std::{
     cell::RefCell,
     sync::{
-        // atomic::AtomicBool,
         Arc,
         Mutex,
     },
 };
-// use std::cell::RefCell;
-// use lazy_static::lazy_static;
 
 use async_spdk::{
     event::{app_fini, app_stop, send_shutdown},
@@ -18,12 +15,6 @@ use async_spdk::{
 };
 use blobfs::*;
 use log::*;
-
-// static mut FSFLAG: AtomicBool = AtomicBool::new(false);
-// lazy_static!{
-//     static ref FS: Arc<Mutex<Option<SpdkFilesystem>>> = Arc::new(Mutex::new(None));
-// }
-// static SHUTDOWN: bool = false;
 
 fn main() {
     env_logger::init();
@@ -80,7 +71,6 @@ fn test_fs(
         return Ok(());
     }
 
-    info!("start create");
     fs.create(&ctx, "file1")?;
     info!("Create file1 success");
 
@@ -91,11 +81,6 @@ fn test_fs(
 
     fs.delete(&ctx, "file1")?;
     info!("Delete file1 success");
-
-    // send_shutdown();
-
-    // drop(fs);
-    // info!("App thread drop fs");
 
     *shutdown.lock().unwrap() = true;
     info!("set shutdown to true");

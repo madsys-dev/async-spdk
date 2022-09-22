@@ -56,6 +56,7 @@ impl Default for SpdkFile {
 
 /// Sync API
 impl SpdkFile {
+    /// Close file
     pub fn close(&self, ctx: &SpdkFsThreadCtx) -> Result<()> {
         let ret = unsafe { spdk_file_close(self.ptr, ctx.ptr) };
         if ret != 0 {
@@ -64,6 +65,7 @@ impl SpdkFile {
         Ok(())
     }
 
+    /// Truncate file
     pub fn truncate(&self, ctx: &SpdkFsThreadCtx, length: u64) -> Result<()> {
         let ret = unsafe { spdk_file_truncate(self.ptr, ctx.ptr, length) };
         if ret != 0 {
@@ -72,16 +74,19 @@ impl SpdkFile {
         Ok(())
     }
 
+    /// Get file name
     pub fn name(&self) -> Result<String> {
         let name = unsafe { spdk_file_get_name(self.ptr).as_ref().unwrap() };
         Ok(name.to_string())
     }
 
+    /// Get file length
     pub fn get_len(&self) -> Result<u64> {
         let ret = unsafe { spdk_file_get_length(self.ptr) };
         Ok(ret)
     }
 
+    /// Write to file
     pub fn write(
         &mut self,
         ctx: &SpdkFsThreadCtx,
@@ -222,6 +227,7 @@ impl SpdkFilesystem {
         Ok(SpdkFilesystem { ptr })
     }
 
+    /// Init blobfs with no send_request function
     pub async fn init_async(bs_dev: &mut BlobStoreBDev, opts: &mut SpdkBlobfsOpts) -> Result<Self> {
         let ptr = do_async(|arg| unsafe {
             spdk_fs_init(bs_dev.ptr, &mut opts.0, None, Some(callback_with), arg);
@@ -353,6 +359,7 @@ impl SpdkFilesystem {
         Ok(())
     }
 
+    /// Create file
     pub fn create(&self, ctx: &SpdkFsThreadCtx, name: &str) -> Result<()> {
         let cname = CString::new(name).expect("Failt to parse name");
         let fs = self.clone();
@@ -363,6 +370,7 @@ impl SpdkFilesystem {
         Ok(())
     }
 
+    /// Open file
     pub fn open(
         &self,
         ctx: &SpdkFsThreadCtx,
@@ -379,6 +387,7 @@ impl SpdkFilesystem {
         Ok(())
     }
 
+    /// Rename file
     pub fn rename(&self, ctx: &SpdkFsThreadCtx, from: &str, to: &str) -> Result<()> {
         let from = CString::new(from).expect("Fail to parse old name");
         let to = CString::new(to).expect("Fail to parse new name");
@@ -389,6 +398,7 @@ impl SpdkFilesystem {
         Ok(())
     }
 
+    /// Delete file
     pub fn delete(&self, ctx: &SpdkFsThreadCtx, name: &str) -> Result<()> {
         let cname = CString::new(name).expect("Fail to parse name");
         let ret = unsafe { spdk_fs_delete_file(self.ptr, ctx.ptr, cname.as_ptr()) };
@@ -445,6 +455,7 @@ impl SpdkBlobfsOpts {
     }
 }
 
+/// this function specifies behavior of allocating event to blobfs reactor
 unsafe extern "C" fn send_request_fn(
     f: Option<unsafe extern "C" fn(*mut c_void)>,
     arg: *mut c_void,
@@ -458,6 +469,7 @@ extern "C" fn callback(arg: *mut c_void, fserrno: c_int) {
     callback_with(arg, (), fserrno);
 }
 
+/// unload callback for unload_sync
 extern "C" fn unload_callback(_arg: *mut c_void, fserrno: c_int) {
     if fserrno != 0 {
         error!("error in unload callback");
