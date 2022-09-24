@@ -1,6 +1,7 @@
 //! Blob Storage System
 
 use crate::{blob_bdev::BlobStoreBDev, complete::LocalComplete, error::*};
+use serde::{Deserialize, Serialize};
 use spdk_sys::*;
 use std::ffi::c_void;
 use std::fmt;
@@ -10,6 +11,9 @@ use std::os::raw::c_int;
 pub struct Blobstore {
     ptr: *mut spdk_blob_store,
 }
+
+unsafe impl Send for Blobstore {}
+unsafe impl Sync for Blobstore {}
 
 impl Blobstore {
     /// Get the cluster size in bytes.
@@ -56,11 +60,20 @@ impl Blobstore {
         Ok(Blobstore { ptr })
     }
 
+    /// Load a blobstore on the given device
+    pub async fn load(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore> {
+        let ptr = do_async(|arg| unsafe {
+            spdk_bs_load(bs_dev.ptr, std::ptr::null_mut(), Some(callback_with), arg);
+        })
+        .await?;
+        Ok(Blobstore { ptr })
+    }
+
     /// Unload the blobstore.
     ///
     /// It will flush all volatile data to disk.
     /// WARN: all io_channels must be dropped before unload!
-    pub async fn unload(self) -> Result<()> {
+    pub async fn unload(&self) -> Result<()> {
         do_async(|arg| unsafe {
             spdk_bs_unload(self.ptr, Some(callback), arg);
         })
@@ -97,7 +110,7 @@ impl Blobstore {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BlobId {
     id: spdk_blob_id,
 }
@@ -113,6 +126,9 @@ pub struct IoChannel {
     pub(crate) ptr: *mut spdk_io_channel,
 }
 
+unsafe impl Send for IoChannel {}
+unsafe impl Sync for IoChannel {}
+
 impl Drop for IoChannel {
     fn drop(&mut self) {
         unsafe { spdk_bs_free_io_channel(self.ptr) };
@@ -121,9 +137,23 @@ impl Drop for IoChannel {
 
 #[derive(Debug)]
 pub struct Blob {
-    ptr: *mut spdk_blob,
+    pub(crate) ptr: *mut spdk_blob,
     io_unit_size: u64,
 }
+
+unsafe impl Send for Blob {}
+unsafe impl Sync for Blob {}
+
+impl Clone for Blob {
+    fn clone(&self) -> Self {
+        Self {
+            ptr: self.ptr.clone(),
+            io_unit_size: self.io_unit_size,
+        }
+    }
+}
+
+impl Copy for Blob {}
 
 impl Blob {
     /// Get the number of clusters allocated to the blob.

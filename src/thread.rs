@@ -1,4 +1,5 @@
 use crate::{cpuset::CpuSet, Result, SpdkError};
+use log::*;
 use spdk_sys::*;
 use std::{
     ffi::{c_void, CString},
@@ -9,6 +10,18 @@ pub struct Poller {
     ptr: *mut spdk_poller,
     #[allow(dead_code)]
     closure: Box<dyn Fn() -> bool>,
+}
+
+unsafe impl Send for Poller {}
+unsafe impl Sync for Poller {}
+
+impl Default for Poller {
+    fn default() -> Self {
+        Self {
+            ptr: std::ptr::null_mut(),
+            closure: Box::new(|| true),
+        }
+    }
 }
 
 impl Poller {
@@ -42,6 +55,12 @@ impl Poller {
     pub fn resume(&mut self) {
         unsafe {
             spdk_poller_resume(self.ptr);
+        }
+    }
+
+    pub fn unregister(&mut self) {
+        unsafe {
+            spdk_poller_unregister(&mut self.ptr);
         }
     }
 }

@@ -1,4 +1,3 @@
-use log::*;
 use std::{
     cell::UnsafeCell,
     ffi::c_void,

@@ -9,43 +9,17 @@ fn main() {
     build_from_source();
 
     // Tell cargo to tell rustc to link the system shared library.
+    println!("cargo:rustc-link-lib=spdk_fat");
     println!("cargo:rustc-link-lib=aio");
     println!("cargo:rustc-link-lib=numa");
     println!("cargo:rustc-link-lib=uuid");
     println!("cargo:rustc-link-lib=crypto");
     println!("cargo:rustc-link-lib=stdc++");
-    println!("cargo:rustc-link-search=native={}/build/lib", src.display());
+    println!("cargo:rustc-link-lib=ssl");
     println!(
-        "cargo:rustc-link-search=native={}/dpdk/build/lib",
-        src.display()
+        "cargo:rustc-link-search=native={}",
+        env::var("OUT_DIR").unwrap()
     );
-
-    // link 'spdk/build/lib/libspdk_*.a'
-    for e in std::fs::read_dir(src.join("build/lib")).unwrap() {
-        let entry = e.expect("failed to read directory entry");
-        let name = entry.file_name();
-        let name = name.to_str().unwrap();
-        if name == "libspdk_ut_mock.a" {
-            continue;
-        }
-        if let Some(name) = name.strip_suffix(".a") {
-            if let Some(name) = name.strip_prefix("lib") {
-                println!("cargo:rustc-link-lib=static={}", name);
-            }
-        }
-    }
-
-    // link 'spdk/dpdk/build/lib/librte_*.a'
-    for e in std::fs::read_dir(src.join("dpdk/build/lib")).unwrap() {
-        let entry = e.expect("failed to read directory entry");
-        let name = entry.file_name();
-        let name = name.to_str().unwrap();
-        if let Some(name) = name.strip_suffix(".a") {
-            if let Some(name) = name.strip_prefix("lib") {
-                println!("cargo:rustc-link-lib=static={}", name);
-            }
-        }
-    }
 
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=wrapper.h");
@@ -114,11 +88,12 @@ impl bindgen::callbacks::ParseCallbacks for IgnoreMacros {
 
 fn build_from_source() {
     let src = env::current_dir().unwrap().join("spdk");
+    let dst = PathBuf::from(env::var("OUT_DIR").unwrap()).join("libspdk_fat.so");
 
     // Return if the outputs exist.
-    if src.join("build/lib").exists() {
-        return;
-    }
+    // if dst.exists() {
+    //     return;
+    // }
 
     // Initialize git submodule if necessary.
     if !Path::new("spdk/.git").exists() {
@@ -143,4 +118,36 @@ fn build_from_source() {
         .status()
         .expect("failed to make");
     assert!(status.success(), "failed to make: {}", status);
+
+    // link all shared libraries into 'libspdk_fat.so'
+    let mut cc = Command::new("cc");
+    cc.arg("-shared")
+        .arg("-o")
+        .arg(dst)
+        .arg("-laio")
+        .arg("-lnuma")
+        .arg("-luuid")
+        .arg("-lcrypto")
+        .arg("-Wl,--whole-archive");
+
+    let spdks = std::fs::read_dir(src.join("build/lib")).unwrap();
+    let dpdks = std::fs::read_dir(src.join("dpdk/build/lib")).unwrap();
+    for e in spdks.chain(dpdks) {
+        let entry = e.expect("failed to read directory entry");
+        let name = entry.file_name();
+        let name = name.to_str().unwrap();
+        if name == "libspdk_ut_mock.a" {
+            continue;
+        }
+        if name.starts_with("lib") && name.ends_with(".a") {
+            cc.arg(entry.path());
+        }
+    }
+    cc.arg("-Wl,--no-whole-archive");
+    let status = cc.status().expect("failed to generate libspdk_fat.so");
+    assert!(
+        status.success(),
+        "failed to generate libspdk_fat.so: {}",
+        status
+    );
 }

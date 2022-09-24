@@ -7,3 +7,4 @@
 #include "spdk/env_dpdk.h"
 #include "spdk/vmd.h"
 #include "spdk/log.h"
+#include "spdk/blobfs.h"

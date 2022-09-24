@@ -1,4 +1,6 @@
-use crate::complete::LocalComplete;
+use crate::error::*;
+use crate::{complete::LocalComplete, SpdkError};
+use log::*;
 use spdk_sys::*;
 use std::{
     cell::RefCell,
@@ -11,6 +13,7 @@ use std::{
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
 
+#[derive(Clone)]
 pub struct AppOpts(spdk_app_opts);
 
 impl AppOpts {
@@ -23,6 +26,10 @@ impl AppOpts {
             spdk_app_opts_init(opts.as_mut_ptr(), std::mem::size_of::<spdk_app_opts>());
             AppOpts(opts.assume_init())
         }
+    }
+
+    pub fn get_opts(&self) -> spdk_app_opts {
+        self.clone().0
     }
 
     pub fn name(mut self, name: &str) -> Self {
@@ -39,6 +46,22 @@ impl AppOpts {
         self
     }
 
+    /// Reactor mask
+    pub fn reactor_mask(mut self, mask: &str) -> Self {
+        self.0.reactor_mask = CString::new(mask).expect("Fail to parse mask").into_raw();
+        self
+    }
+
+    pub fn set_log(mut self, log_level: i32) -> Self {
+        self.0.print_level = log_level;
+        self
+    }
+
+    pub fn main_core(mut self, main_core: i32) -> Self {
+        self.0.main_core = main_core;
+        self
+    }
+
     pub fn block_on<F: Future>(mut self, future: F) -> F::Output {
         extern "C" fn start_fn<F: Future>(arg: *mut c_void) {
             let (future, output_ptr) = unsafe { *Box::from_raw(arg as *mut (F, *mut F::Output)) };
@@ -51,8 +74,8 @@ impl AppOpts {
                 Some(start_fn::<F>),
                 Box::into_raw(Box::new((future, output.as_mut_ptr()))) as *mut c_void,
             );
-            spdk_app_fini();
             assert_eq!(err, 0);
+            spdk_app_fini();
             output.assume_init()
         }
     }
@@ -97,7 +120,7 @@ fn spawn_internal<F: Future>(future: F, output_ptr: *mut F::Output) -> JoinHandl
                     task.output.complete(output);
                 } else {
                     task.output_ptr.write(output);
-                    spdk_app_stop(0);
+                    // spdk_app_stop(0);
                 }
                 spdk_poller_unregister(&mut task.poller);
                 Rc::from_raw(cell_ptr);
@@ -146,4 +169,51 @@ fn drop_if_not_null(string: *const c_char) {
     if !string.is_null() {
         unsafe { CString::from_raw(string as *mut c_char) };
     }
+}
+
+pub fn send_shutdown() {
+    unsafe {
+        spdk_app_start_shutdown();
+    }
+}
+
+pub fn app_stop() {
+    unsafe {
+        spdk_app_stop(0);
+    }
+}
+
+pub fn app_fini() {
+    unsafe {
+        spdk_app_fini();
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SpdkEvent {
+    ptr: *mut spdk_event,
+}
+
+impl SpdkEvent {
+    /// allocate a event
+    pub fn alloc(lcore: u32, arg1: *mut c_void, arg2: *mut c_void) -> Result<Self> {
+        let ptr = unsafe { spdk_event_allocate(lcore, Some(callback2), arg1, arg2) };
+        if ptr.is_null() {
+            return Err(SpdkError::from(-1));
+        }
+        Ok(SpdkEvent { ptr })
+    }
+
+    /// put this event to specific reactor event ring
+    pub fn call(&self) -> Result<()> {
+        unsafe {
+            spdk_event_call(self.ptr);
+        }
+        Ok(())
+    }
+}
+
+extern "C" fn callback2(arg1: *mut c_void, arg2: *mut c_void) {
+    let f: fn(*mut c_void) = unsafe { std::mem::transmute(arg1) };
+    f(arg2);
 }
