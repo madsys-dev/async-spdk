@@ -1,15 +1,25 @@
 //! Blob Storage System
 
 use crate::{blob_bdev::BlobStoreBDev, complete::LocalComplete, error::*};
+use log::*;
 use serde::{Deserialize, Serialize};
 use spdk_sys::*;
 use std::ffi::c_void;
 use std::fmt;
 use std::os::raw::c_int;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub struct Blobstore {
-    ptr: *mut spdk_blob_store,
+    pub ptr: *mut spdk_blob_store,
+}
+
+impl Default for Blobstore {
+    fn default() -> Self {
+        Self {
+            ptr: std::ptr::null_mut(),
+        }
+    }
 }
 
 unsafe impl Send for Blobstore {}
@@ -60,6 +70,18 @@ impl Blobstore {
         Ok(Blobstore { ptr })
     }
 
+    pub fn init_sync(bs_dev: &mut BlobStoreBDev, cb_arg: *mut c_void) -> Result<()> {
+        unsafe {
+            spdk_bs_init(
+                bs_dev.ptr,
+                std::ptr::null_mut(),
+                Some(init_callback),
+                cb_arg,
+            );
+        };
+        Ok(())
+    }
+
     /// Load a blobstore on the given device
     pub async fn load(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore> {
         let ptr = do_async(|arg| unsafe {
@@ -81,6 +103,20 @@ impl Blobstore {
         Ok(())
     }
 
+    pub fn unload_sync(&self) -> Result<()> {
+        if self.ptr.is_null() {
+            error!("blobstore ptr is null");
+        }
+        unsafe {
+            spdk_bs_unload(
+                self.ptr,
+                Some(unload_callback),
+                std::ptr::null_mut() as *mut c_void,
+            );
+        }
+        Ok(())
+    }
+
     /// Create a new blob with default option values on the given blobstore.
     pub async fn create_blob(&self) -> Result<BlobId> {
         let id = do_async(|arg| unsafe {
@@ -88,6 +124,20 @@ impl Blobstore {
         })
         .await?;
         Ok(BlobId { id })
+    }
+
+    /// Create blob, sync API
+    ///
+    /// cb_arg: Arc<Mutex< BlobId >>
+    pub fn create_blob_sync(
+        &self,
+        // cb_fn: extern "C" fn(*mut c_void, spdk_blob_id, i32),
+        cb_arg: *mut c_void,
+    ) -> Result<()> {
+        unsafe {
+            spdk_bs_create_blob(self.ptr, Some(create_callback), cb_arg);
+        }
+        Ok(())
     }
 
     /// Open a blob from the given blobstore.
@@ -100,6 +150,21 @@ impl Blobstore {
         Ok(Blob { ptr, io_unit_size })
     }
 
+    /// Open blob, sync API
+    ///
+    /// cb_arg: Arc<Mutex<Blob>>
+    pub fn open_blob_sync(
+        &self,
+        blob_id: &BlobId,
+        // cb_fn: extern "C" fn(*mut c_void, *mut spdk_blob, c_int),
+        cb_arg: *mut c_void,
+    ) -> Result<()> {
+        unsafe {
+            spdk_bs_open_blob(self.ptr, blob_id.id, Some(open_callback), cb_arg);
+        }
+        Ok(())
+    }
+
     /// Delete an existing blob from the given blobstore.
     pub async fn delete_blob(&self, blob_id: BlobId) -> Result<()> {
         do_async(|arg| unsafe {
@@ -108,11 +173,30 @@ impl Blobstore {
         .await?;
         Ok(())
     }
+
+    /// Delete blob, sync API
+    pub fn delete_blob_sync(&self, blob_id: &BlobId) -> Result<()> {
+        unsafe {
+            spdk_bs_delete_blob(
+                self.ptr,
+                blob_id.id,
+                Some(delete_callback),
+                std::ptr::null_mut() as *mut c_void,
+            );
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BlobId {
     id: spdk_blob_id,
+}
+
+impl Default for BlobId {
+    fn default() -> Self {
+        Self { id: 0 }
+    }
 }
 
 impl fmt::Display for BlobId {
@@ -137,8 +221,17 @@ impl Drop for IoChannel {
 
 #[derive(Debug)]
 pub struct Blob {
-    pub(crate) ptr: *mut spdk_blob,
+    pub ptr: *mut spdk_blob,
     io_unit_size: u64,
+}
+
+impl Default for Blob {
+    fn default() -> Self {
+        Self {
+            ptr: std::ptr::null_mut(),
+            io_unit_size: 512,
+        }
+    }
 }
 
 unsafe impl Send for Blob {}
@@ -185,6 +278,24 @@ impl Blob {
         .await
     }
 
+    /// Read data from a blob, sync API
+    pub fn read_sync(&self, io_channel: &IoChannel, offset: u64, buf: &mut [u8]) -> Result<()> {
+        assert_eq!(buf.len() as u64 % self.io_unit_size, 0);
+        let units = buf.len() as u64 / self.io_unit_size;
+        unsafe {
+            spdk_blob_io_read(
+                self.ptr,
+                io_channel.ptr,
+                buf.as_mut_ptr() as _,
+                offset,
+                units,
+                Some(rw_callback),
+                std::ptr::null_mut() as *mut c_void,
+            );
+        }
+        Ok(())
+    }
+
     /// Write data to a blob.
     pub async fn write(&self, io_channel: &IoChannel, offset: u64, buf: &[u8]) -> Result<()> {
         assert_eq!(buf.len() as u64 % self.io_unit_size, 0);
@@ -203,6 +314,24 @@ impl Blob {
         .await
     }
 
+    /// Write data to a blob, sync API
+    pub fn write_sync(&self, io_channel: &IoChannel, offset: u64, buf: &[u8]) -> Result<()> {
+        assert_eq!(buf.len() as u64 % self.io_unit_size, 0);
+        let units = buf.len() as u64 / self.io_unit_size;
+        unsafe {
+            spdk_blob_io_write(
+                self.ptr,
+                io_channel.ptr,
+                buf.as_ptr() as _,
+                offset,
+                units,
+                Some(rw_callback),
+                std::ptr::null_mut() as *mut c_void,
+            );
+        }
+        Ok(())
+    }
+
     /// Write zeros into area of a blob.
     pub async fn write_zero(&self, io_channel: &IoChannel, offset: u64, len: u64) -> Result<()> {
         assert_eq!(len % self.io_unit_size, 0);
@@ -211,6 +340,23 @@ impl Blob {
             spdk_blob_io_write_zeroes(self.ptr, io_channel.ptr, offset, units, Some(callback), arg);
         })
         .await
+    }
+
+    /// Write zeros to a blob, sync API
+    pub fn write_zero_sync(
+        &self,
+        io_channel: &IoChannel,
+        offset: u64,
+        len: u64,
+        cb_fn: unsafe extern "C" fn(*mut c_void, c_int),
+        cb_arg: *mut c_void,
+    ) -> Result<()> {
+        assert_eq!(len % self.io_unit_size, 0);
+        let units = len / self.io_unit_size;
+        unsafe {
+            spdk_blob_io_write_zeroes(self.ptr, io_channel.ptr, offset, units, Some(cb_fn), cb_arg);
+        }
+        Ok(())
     }
 
     /// Resize a blob to `size` clusters.
@@ -222,6 +368,19 @@ impl Blob {
             spdk_blob_resize(self.ptr, size, Some(callback), arg);
         })
         .await?;
+        Ok(())
+    }
+
+    /// Resize a blob, sync API
+    pub fn resize_sync(
+        &self,
+        size: u64,
+        cb_fn: unsafe extern "C" fn(*mut c_void, c_int),
+        cb_arg: *mut c_void,
+    ) -> Result<()> {
+        unsafe {
+            spdk_blob_resize(self.ptr, size, Some(cb_fn), cb_arg);
+        }
         Ok(())
     }
 
@@ -237,6 +396,18 @@ impl Blob {
         Ok(())
     }
 
+    /// Sync blob's metadata, sync API
+    pub fn sync_metadata_sync(
+        &self,
+        cb_fn: unsafe extern "C" fn(*mut c_void, c_int),
+        cb_arg: *mut c_void,
+    ) -> Result<()> {
+        unsafe {
+            spdk_blob_sync_md(self.ptr, Some(cb_fn), cb_arg);
+        }
+        Ok(())
+    }
+
     /// Close a blob.
     ///
     /// This will automatically sync.
@@ -245,6 +416,18 @@ impl Blob {
             spdk_blob_close(self.ptr, Some(callback), arg);
         })
         .await?;
+        Ok(())
+    }
+
+    /// Close a blob, sync API
+    pub fn close_sync(
+        self,
+        cb_fn: unsafe extern "C" fn(*mut c_void, c_int),
+        cb_arg: *mut c_void,
+    ) -> Result<()> {
+        unsafe {
+            spdk_blob_close(self.ptr, Some(cb_fn), cb_arg);
+        }
         Ok(())
     }
 }
@@ -261,6 +444,60 @@ extern "C" fn callback_with<T>(arg: *mut c_void, bs: T, bserrno: c_int) {
         Ok(bs)
     };
     complete.complete(result);
+}
+
+extern "C" fn init_callback(mut arg: *mut c_void, bs: *mut spdk_blob_store, bserrno: c_int) {
+    if bserrno != 0 {
+        error!("bs error");
+    }
+    if bs.is_null() {
+        error!("bs pointer is null");
+    }
+    let bs_ = unsafe { Arc::from_raw(arg as *mut Mutex<Blobstore>) };
+    unsafe {
+        bs_.lock().unwrap().ptr = bs;
+    }
+}
+
+extern "C" fn open_callback(mut arg: *mut c_void, blob: *mut spdk_blob, bserrno: c_int) {
+    if bserrno != 0 {
+        error!("open error");
+    }
+    if blob.is_null() {
+        error!("open blob pointer null");
+    }
+    let blob_ = unsafe { Arc::from_raw(arg as *mut Mutex<Blob>) };
+    unsafe {
+        blob_.lock().unwrap().ptr = blob;
+    }
+}
+
+extern "C" fn create_callback(mut arg: *mut c_void, blob_id: spdk_blob_id, bserrno: c_int) {
+    if bserrno != 0 {
+        error!("create error");
+    }
+    let blob_id_ = unsafe { Arc::from_raw(arg as *mut Mutex<BlobId>) };
+    unsafe {
+        blob_id_.lock().unwrap().id = blob_id;
+    }
+}
+
+extern "C" fn unload_callback(arg: *mut c_void, bserrno: c_int) {
+    if bserrno != 0 {
+        error!("bs unload error");
+    }
+}
+
+extern "C" fn rw_callback(arg: *mut c_void, bserrno: c_int) {
+    if bserrno != 0 {
+        error!("read/write error");
+    }
+}
+
+extern "C" fn delete_callback(arg: *mut c_void, bserrno: c_int) {
+    if bserrno != 0 {
+        error!("delete blob error");
+    }
 }
 
 async fn do_async<T: Unpin>(f: impl FnOnce(*mut c_void)) -> Result<T> {
