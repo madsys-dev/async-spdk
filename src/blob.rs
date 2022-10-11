@@ -8,6 +8,7 @@ use std::ffi::c_void;
 use std::fmt;
 use std::os::raw::c_int;
 use std::sync::{Arc, Mutex};
+use tokio::sync::Notify;
 
 #[derive(Debug)]
 pub struct Blobstore {
@@ -453,9 +454,10 @@ extern "C" fn init_callback(mut arg: *mut c_void, bs: *mut spdk_blob_store, bser
     if bs.is_null() {
         error!("bs pointer is null");
     }
-    let bs_ = unsafe { Arc::from_raw(arg as *mut Mutex<Blobstore>) };
+    let (bs_, n) = unsafe { *Box::from_raw(arg as *mut (Arc<Mutex<Blobstore>>, Arc<Notify>)) };
     unsafe {
         bs_.lock().unwrap().ptr = bs;
+        n.notify_one();
     }
 }
 
@@ -466,9 +468,10 @@ extern "C" fn open_callback(mut arg: *mut c_void, blob: *mut spdk_blob, bserrno:
     if blob.is_null() {
         error!("open blob pointer null");
     }
-    let blob_ = unsafe { Arc::from_raw(arg as *mut Mutex<Blob>) };
+    let (blob_, n) = unsafe { *Box::from_raw(arg as *mut (Arc<Mutex<Blob>>, Arc<Notify>)) };
     unsafe {
         blob_.lock().unwrap().ptr = blob;
+        n.notify_one();
     }
 }
 
@@ -476,9 +479,10 @@ extern "C" fn create_callback(mut arg: *mut c_void, blob_id: spdk_blob_id, bserr
     if bserrno != 0 {
         error!("create error");
     }
-    let blob_id_ = unsafe { Arc::from_raw(arg as *mut Mutex<BlobId>) };
+    let (blob_id_, n) = unsafe { *Box::from_raw(arg as *mut (Arc<Mutex<BlobId>>, Arc<Notify>)) };
     unsafe {
         blob_id_.lock().unwrap().id = blob_id;
+        n.notify_one();
     }
 }
 
