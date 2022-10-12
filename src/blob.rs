@@ -199,7 +199,7 @@ impl fmt::Display for BlobId {
 
 #[derive(Debug)]
 pub struct IoChannel {
-    pub(crate) ptr: *mut spdk_io_channel,
+    pub ptr: *mut spdk_io_channel,
 }
 
 unsafe impl Send for IoChannel {}
@@ -352,13 +352,12 @@ impl Blob {
         io_channel: &IoChannel,
         offset: u64,
         len: u64,
-        cb_fn: unsafe extern "C" fn(*mut c_void, c_int),
         cb_arg: *mut c_void,
     ) -> Result<()> {
         assert_eq!(len % self.io_unit_size, 0);
         let units = len / self.io_unit_size;
         unsafe {
-            spdk_blob_io_write_zeroes(self.ptr, io_channel.ptr, offset, units, Some(cb_fn), cb_arg);
+            spdk_blob_io_write_zeroes(self.ptr, io_channel.ptr, offset, units, Some(rw_callback), cb_arg);
         }
         Ok(())
     }
@@ -514,7 +513,7 @@ extern "C" fn unload_callback(arg: *mut c_void, bserrno: c_int) {
 
 extern "C" fn rw_callback(arg: *mut c_void, bserrno: c_int) {
     if bserrno != 0 {
-        error!("read/write error");
+        error!("read/write error: {}", bserrno);
     }
     let n = unsafe { *Box::from_raw(arg as *mut Arc<Notify>) };
     n.notify_one();
@@ -532,7 +531,6 @@ extern "C" fn close_blob_callback(arg: *mut c_void, bserrno: c_int) {
     if bserrno != 0 {
         error!("close blob error");
     }
-    info!("******************close blob callback is called");
     let n = unsafe { *Box::from_raw(arg as *mut Arc<Notify>) };
     n.notify_one();
 }
