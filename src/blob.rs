@@ -104,16 +104,12 @@ impl Blobstore {
         Ok(())
     }
 
-    pub fn unload_sync(&self) -> Result<()> {
+    pub fn unload_sync(&self, cb_arg: *mut c_void) -> Result<()> {
         if self.ptr.is_null() {
             error!("blobstore ptr is null");
         }
         unsafe {
-            spdk_bs_unload(
-                self.ptr,
-                Some(unload_callback),
-                std::ptr::null_mut() as *mut c_void,
-            );
+            spdk_bs_unload(self.ptr, Some(unload_callback), cb_arg);
         }
         Ok(())
     }
@@ -176,14 +172,9 @@ impl Blobstore {
     }
 
     /// Delete blob, sync API
-    pub fn delete_blob_sync(&self, blob_id: &BlobId) -> Result<()> {
+    pub fn delete_blob_sync(&self, blob_id: &BlobId, cb_arg: *mut c_void) -> Result<()> {
         unsafe {
-            spdk_bs_delete_blob(
-                self.ptr,
-                blob_id.id,
-                Some(delete_callback),
-                std::ptr::null_mut() as *mut c_void,
-            );
+            spdk_bs_delete_blob(self.ptr, blob_id.id, Some(delete_callback), cb_arg);
         }
         Ok(())
     }
@@ -280,7 +271,13 @@ impl Blob {
     }
 
     /// Read data from a blob, sync API
-    pub fn read_sync(&self, io_channel: &IoChannel, offset: u64, buf: &mut [u8]) -> Result<()> {
+    pub fn read_sync(
+        &self,
+        io_channel: &IoChannel,
+        offset: u64,
+        buf: &mut [u8],
+        cb_arg: *mut c_void,
+    ) -> Result<()> {
         assert_eq!(buf.len() as u64 % self.io_unit_size, 0);
         let units = buf.len() as u64 / self.io_unit_size;
         unsafe {
@@ -291,7 +288,7 @@ impl Blob {
                 offset,
                 units,
                 Some(rw_callback),
-                std::ptr::null_mut() as *mut c_void,
+                cb_arg,
             );
         }
         Ok(())
@@ -316,7 +313,13 @@ impl Blob {
     }
 
     /// Write data to a blob, sync API
-    pub fn write_sync(&self, io_channel: &IoChannel, offset: u64, buf: &[u8]) -> Result<()> {
+    pub fn write_sync(
+        &self,
+        io_channel: &IoChannel,
+        offset: u64,
+        buf: &[u8],
+        cb_arg: *mut c_void,
+    ) -> Result<()> {
         assert_eq!(buf.len() as u64 % self.io_unit_size, 0);
         let units = buf.len() as u64 / self.io_unit_size;
         unsafe {
@@ -327,7 +330,7 @@ impl Blob {
                 offset,
                 units,
                 Some(rw_callback),
-                std::ptr::null_mut() as *mut c_void,
+                cb_arg,
             );
         }
         Ok(())
@@ -376,11 +379,11 @@ impl Blob {
     pub fn resize_sync(
         &self,
         size: u64,
-        cb_fn: unsafe extern "C" fn(*mut c_void, c_int),
+        // cb_fn: unsafe extern "C" fn(*mut c_void, c_int),
         cb_arg: *mut c_void,
     ) -> Result<()> {
         unsafe {
-            spdk_blob_resize(self.ptr, size, Some(cb_fn), cb_arg);
+            spdk_blob_resize(self.ptr, size, Some(resize_callback), cb_arg);
         }
         Ok(())
     }
@@ -400,11 +403,11 @@ impl Blob {
     /// Sync blob's metadata, sync API
     pub fn sync_metadata_sync(
         &self,
-        cb_fn: unsafe extern "C" fn(*mut c_void, c_int),
+        // cb_fn: unsafe extern "C" fn(*mut c_void, c_int),
         cb_arg: *mut c_void,
     ) -> Result<()> {
         unsafe {
-            spdk_blob_sync_md(self.ptr, Some(cb_fn), cb_arg);
+            spdk_blob_sync_md(self.ptr, Some(sync_md_callback), cb_arg);
         }
         Ok(())
     }
@@ -423,11 +426,10 @@ impl Blob {
     /// Close a blob, sync API
     pub fn close_sync(
         self,
-        cb_fn: unsafe extern "C" fn(*mut c_void, c_int),
         cb_arg: *mut c_void,
     ) -> Result<()> {
         unsafe {
-            spdk_blob_close(self.ptr, Some(cb_fn), cb_arg);
+            spdk_blob_close(self.ptr, Some(close_blob_callback), cb_arg);
         }
         Ok(())
     }
@@ -486,22 +488,53 @@ extern "C" fn create_callback(mut arg: *mut c_void, blob_id: spdk_blob_id, bserr
     }
 }
 
+extern "C" fn resize_callback(arg: *mut c_void, bserrno: c_int) {
+    if bserrno != 0 {
+        error!("resize error");
+    }
+    let n = unsafe { *Box::from_raw(arg as *mut Arc<Notify>) };
+    n.notify_one();
+}
+
+extern "C" fn sync_md_callback(arg: *mut c_void, bserrno: c_int) {
+    if bserrno != 0 {
+        error!("sync metadata error");
+    }
+    let n = unsafe { *Box::from_raw(arg as *mut Arc<Notify>) };
+    n.notify_one();
+}
+
 extern "C" fn unload_callback(arg: *mut c_void, bserrno: c_int) {
     if bserrno != 0 {
         error!("bs unload error");
     }
+    let n = unsafe { *Box::from_raw(arg as *mut Arc<Notify>) };
+    n.notify_one();
 }
 
 extern "C" fn rw_callback(arg: *mut c_void, bserrno: c_int) {
     if bserrno != 0 {
         error!("read/write error");
     }
+    let n = unsafe { *Box::from_raw(arg as *mut Arc<Notify>) };
+    n.notify_one();
 }
 
 extern "C" fn delete_callback(arg: *mut c_void, bserrno: c_int) {
     if bserrno != 0 {
         error!("delete blob error");
     }
+    let n = unsafe { *Box::from_raw(arg as *mut Arc<Notify>) };
+    n.notify_one();
+}
+
+extern "C" fn close_blob_callback(arg: *mut c_void, bserrno: c_int) {
+    if bserrno != 0 {
+        error!("close blob error");
+    }
+    info!("******************close blob callback is called");
+    let n = unsafe { *Box::from_raw(arg as *mut Arc<Notify>) };
+    n.notify_one();
 }
 
 async fn do_async<T: Unpin>(f: impl FnOnce(*mut c_void)) -> Result<T> {
