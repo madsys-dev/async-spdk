@@ -92,6 +92,18 @@ impl Blobstore {
         Ok(Blobstore { ptr })
     }
 
+    pub fn load_sync(bs_dev: &mut BlobStoreBDev, cb_arg: *mut c_void) -> Result<()> {
+        unsafe {
+            spdk_bs_load(
+                bs_dev.ptr,
+                std::ptr::null_mut(),
+                Some(init_callback),
+                cb_arg,
+            );
+        };
+        Ok(())
+    }
+
     /// Unload the blobstore.
     ///
     /// It will flush all volatile data to disk.
@@ -357,7 +369,14 @@ impl Blob {
         assert_eq!(len % self.io_unit_size, 0);
         let units = len / self.io_unit_size;
         unsafe {
-            spdk_blob_io_write_zeroes(self.ptr, io_channel.ptr, offset, units, Some(rw_callback), cb_arg);
+            spdk_blob_io_write_zeroes(
+                self.ptr,
+                io_channel.ptr,
+                offset,
+                units,
+                Some(rw_callback),
+                cb_arg,
+            );
         }
         Ok(())
     }
@@ -423,10 +442,7 @@ impl Blob {
     }
 
     /// Close a blob, sync API
-    pub fn close_sync(
-        self,
-        cb_arg: *mut c_void,
-    ) -> Result<()> {
+    pub fn close_sync(self, cb_arg: *mut c_void) -> Result<()> {
         unsafe {
             spdk_blob_close(self.ptr, Some(close_blob_callback), cb_arg);
         }
