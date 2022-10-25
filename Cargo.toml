@@ -14,6 +14,7 @@ spdk-sys = { path = "spdk-sys" }
 dotenv = "0.15.0"
 serde = { version = "1.0", features = ["derive"] }
 lazy_static = "1.4.0"
+tokio = {version = "1.21", features = ["full"]}
 
 [dev-dependencies]
 env_logger = "0.8"

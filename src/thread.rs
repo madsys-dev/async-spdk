@@ -1,5 +1,4 @@
 use crate::{cpuset::CpuSet, Result, SpdkError};
-use log::*;
 use spdk_sys::*;
 use std::{
     ffi::{c_void, CString},

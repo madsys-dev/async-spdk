@@ -1,6 +1,5 @@
 use crate::error::*;
 use crate::{complete::LocalComplete, SpdkError};
-use log::*;
 use spdk_sys::*;
 use std::{
     cell::RefCell,
@@ -33,6 +32,7 @@ impl AppOpts {
     }
 
     pub fn name(mut self, name: &str) -> Self {
+        // todo: call CString::from_raw() to convert it back to Rust
         self.0.name = CString::new(name)
             .expect("Couldn't create a string")
             .into_raw();
