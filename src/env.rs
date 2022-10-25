@@ -7,6 +7,7 @@ pub struct DmaBuf {
 }
 
 unsafe impl Send for DmaBuf {}
+unsafe impl Sync for DmaBuf {}
 
 impl DmaBuf {
     /// Allocate a pinned memory buffer with the given size and alignment.
