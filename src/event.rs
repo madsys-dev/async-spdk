@@ -194,6 +194,9 @@ pub struct SpdkEvent {
     ptr: *mut spdk_event,
 }
 
+unsafe impl Sync for SpdkEvent {}
+unsafe impl Send for SpdkEvent {}
+
 impl SpdkEvent {
     /// allocate a event
     pub fn alloc(lcore: u32, arg1: *mut c_void, arg2: *mut c_void) -> Result<Self> {
