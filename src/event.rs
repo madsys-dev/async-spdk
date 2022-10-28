@@ -200,7 +200,9 @@ unsafe impl Send for SpdkEvent {}
 impl SpdkEvent {
     /// allocate a event
     pub fn alloc(lcore: u32, arg1: *mut c_void, arg2: *mut c_void) -> Result<Self> {
-        let ptr = unsafe { spdk_event_allocate(lcore, Some(callback2), arg1, arg2) };
+        let ptr = unsafe {
+            spdk_event_allocate(lcore, Some(callback2), unsafe { arg1 }, unsafe { arg2 })
+        };
         if ptr.is_null() {
             return Err(SpdkError::from(-1));
         }

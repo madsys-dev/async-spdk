@@ -77,7 +77,7 @@ impl Blobstore {
                 bs_dev.ptr,
                 std::ptr::null_mut(),
                 Some(init_callback),
-                cb_arg,
+                unsafe { cb_arg },
             );
         };
         Ok(())
@@ -98,7 +98,7 @@ impl Blobstore {
                 bs_dev.ptr,
                 std::ptr::null_mut(),
                 Some(init_callback),
-                cb_arg,
+                unsafe { cb_arg },
             );
         };
         Ok(())
@@ -121,7 +121,7 @@ impl Blobstore {
             error!("blobstore ptr is null");
         }
         unsafe {
-            spdk_bs_unload(self.ptr, Some(unload_callback), cb_arg);
+            spdk_bs_unload(self.ptr, Some(unload_callback), unsafe { cb_arg });
         }
         Ok(())
     }
@@ -144,7 +144,7 @@ impl Blobstore {
         cb_arg: *mut c_void,
     ) -> Result<()> {
         unsafe {
-            spdk_bs_create_blob(self.ptr, Some(create_callback), cb_arg);
+            spdk_bs_create_blob(self.ptr, Some(create_callback), unsafe { cb_arg });
         }
         Ok(())
     }
@@ -169,7 +169,7 @@ impl Blobstore {
         cb_arg: *mut c_void,
     ) -> Result<()> {
         unsafe {
-            spdk_bs_open_blob(self.ptr, blob_id.id, Some(open_callback), cb_arg);
+            spdk_bs_open_blob(self.ptr, blob_id.id, Some(open_callback), unsafe { cb_arg });
         }
         Ok(())
     }
@@ -186,7 +186,9 @@ impl Blobstore {
     /// Delete blob, sync API
     pub fn delete_blob_sync(&self, blob_id: &BlobId, cb_arg: *mut c_void) -> Result<()> {
         unsafe {
-            spdk_bs_delete_blob(self.ptr, blob_id.id, Some(delete_callback), cb_arg);
+            spdk_bs_delete_blob(self.ptr, blob_id.id, Some(delete_callback), unsafe {
+                cb_arg
+            });
         }
         Ok(())
     }
@@ -300,7 +302,7 @@ impl Blob {
                 offset,
                 units,
                 Some(rw_callback),
-                cb_arg,
+                unsafe { cb_arg },
             );
         }
         Ok(())
@@ -342,7 +344,7 @@ impl Blob {
                 offset,
                 units,
                 Some(rw_callback),
-                cb_arg,
+                unsafe { cb_arg },
             );
         }
         Ok(())
@@ -375,7 +377,7 @@ impl Blob {
                 offset,
                 units,
                 Some(rw_callback),
-                cb_arg,
+                unsafe { cb_arg },
             );
         }
         Ok(())
@@ -401,7 +403,7 @@ impl Blob {
         cb_arg: *mut c_void,
     ) -> Result<()> {
         unsafe {
-            spdk_blob_resize(self.ptr, size, Some(resize_callback), cb_arg);
+            spdk_blob_resize(self.ptr, size, Some(resize_callback), unsafe { cb_arg });
         }
         Ok(())
     }
@@ -425,7 +427,7 @@ impl Blob {
         cb_arg: *mut c_void,
     ) -> Result<()> {
         unsafe {
-            spdk_blob_sync_md(self.ptr, Some(sync_md_callback), cb_arg);
+            spdk_blob_sync_md(self.ptr, Some(sync_md_callback), unsafe { cb_arg });
         }
         Ok(())
     }
@@ -444,7 +446,7 @@ impl Blob {
     /// Close a blob, sync API
     pub fn close_sync(self, cb_arg: *mut c_void) -> Result<()> {
         unsafe {
-            spdk_blob_close(self.ptr, Some(close_blob_callback), cb_arg);
+            spdk_blob_close(self.ptr, Some(close_blob_callback), unsafe { cb_arg });
         }
         Ok(())
     }

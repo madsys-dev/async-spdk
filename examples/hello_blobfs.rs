@@ -1,14 +1,8 @@
 //! This is an example for syncronous API of blobfs
 
-use std::{
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use async_spdk::{
-    event::{app_stop},
-    thread::Poller,
-    *,
-};
+use async_spdk::{event::app_stop, thread::Poller, *};
 use blobfs::*;
 use log::*;
 
