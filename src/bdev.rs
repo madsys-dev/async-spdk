@@ -33,13 +33,13 @@ impl BDev {
     }
 
     pub fn get_block_size(&self) -> u32 {
-        let ret = unsafe { spdk_bdev_get_block_size(self.ptr) };
-        ret
+        
+        unsafe { spdk_bdev_get_block_size(self.ptr) }
     }
 
     pub fn get_buf_align(&self) -> usize {
-        let ret = unsafe { spdk_bdev_get_buf_align(self.ptr) as usize };
-        ret
+        
+        unsafe { spdk_bdev_get_buf_align(self.ptr) as usize }
     }
 
     pub fn release_io_channel(&self, ioc: IoChannel) {

@@ -244,7 +244,7 @@ unsafe impl Sync for Blob {}
 impl Clone for Blob {
     fn clone(&self) -> Self {
         Self {
-            ptr: self.ptr.clone(),
+            ptr: self.ptr,
             io_unit_size: self.io_unit_size,
         }
     }
@@ -464,7 +464,7 @@ extern "C" fn callback_with<T>(arg: *mut c_void, bs: T, bserrno: c_int) {
     complete.complete(result);
 }
 
-extern "C" fn init_callback(mut arg: *mut c_void, bs: *mut spdk_blob_store, bserrno: c_int) {
+extern "C" fn init_callback(arg: *mut c_void, bs: *mut spdk_blob_store, bserrno: c_int) {
     if bserrno != 0 {
         error!("bs error");
     }
@@ -478,7 +478,7 @@ extern "C" fn init_callback(mut arg: *mut c_void, bs: *mut spdk_blob_store, bser
     }
 }
 
-extern "C" fn open_callback(mut arg: *mut c_void, blob: *mut spdk_blob, bserrno: c_int) {
+extern "C" fn open_callback(arg: *mut c_void, blob: *mut spdk_blob, bserrno: c_int) {
     if bserrno != 0 {
         error!("open error");
     }
@@ -492,7 +492,7 @@ extern "C" fn open_callback(mut arg: *mut c_void, blob: *mut spdk_blob, bserrno:
     }
 }
 
-extern "C" fn create_callback(mut arg: *mut c_void, blob_id: spdk_blob_id, bserrno: c_int) {
+extern "C" fn create_callback(arg: *mut c_void, blob_id: spdk_blob_id, bserrno: c_int) {
     if bserrno != 0 {
         error!("create error");
     }

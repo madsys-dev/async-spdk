@@ -1,12 +1,11 @@
 //! This is an example for syncronous API of blobfs
 
 use std::{
-    cell::RefCell,
     sync::{Arc, Mutex},
 };
 
 use async_spdk::{
-    event::{app_fini, app_stop, send_shutdown},
+    event::{app_stop},
     thread::Poller,
     *,
 };
@@ -15,10 +14,10 @@ use log::*;
 
 fn main() {
     env_logger::init();
-    let mut fsflag = Arc::new(Mutex::new(false));
-    let mut fs = Arc::new(Mutex::new(SpdkFilesystem::default()));
-    let mut shutdown = Arc::new(Mutex::new(false));
-    let mut shutdown_poller = Arc::new(Mutex::new(Poller::default()));
+    let fsflag = Arc::new(Mutex::new(false));
+    let fs = Arc::new(Mutex::new(SpdkFilesystem::default()));
+    let shutdown = Arc::new(Mutex::new(false));
+    let shutdown_poller = Arc::new(Mutex::new(Poller::default()));
 
     let ff2 = fsflag.clone();
     let fs2 = fs.clone();
@@ -33,9 +32,9 @@ fn main() {
             .unwrap();
     });
 
-    let ff3 = fsflag.clone();
-    let fs3 = fs.clone();
-    let shutdown3 = shutdown.clone();
+    let ff3 = fsflag;
+    let fs3 = fs;
+    let shutdown3 = shutdown;
 
     test_fs(ff3, fs3, shutdown3);
     fs_handle.join().unwrap();
@@ -47,7 +46,7 @@ fn test_fs(
     shutdown: Arc<Mutex<bool>>,
 ) -> Result<()> {
     loop {
-        if *fflag.lock().unwrap() == true {
+        if *fflag.lock().unwrap() {
             break;
         }
     }
@@ -107,7 +106,7 @@ async fn async_main(
     let shutdown_poller_copy = shutdown_poller.clone();
 
     *shutdown_poller.lock().unwrap() = Poller::register(move || {
-        if *shutdown_copy.lock().unwrap() == true {
+        if *shutdown_copy.lock().unwrap() {
             info!("shutdonw poller receive shutdown signal");
             shutdown_fs.lock().unwrap().unload_sync();
             shutdown_poller_copy.lock().unwrap().unregister();

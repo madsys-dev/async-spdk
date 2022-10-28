@@ -362,7 +362,7 @@ impl SpdkFilesystem {
     /// Create file
     pub fn create(&self, ctx: &SpdkFsThreadCtx, name: &str) -> Result<()> {
         let cname = CString::new(name).expect("Failt to parse name");
-        let fs = self.clone();
+        let fs = *self;
         let ret = unsafe { spdk_fs_create_file(fs.ptr, ctx.ptr, cname.as_ptr()) };
         if ret != 0 {
             return Err(SpdkError::from(-1));
