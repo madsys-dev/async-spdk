@@ -91,9 +91,9 @@ fn build_from_source() {
     let dst = PathBuf::from(env::var("OUT_DIR").unwrap()).join("libspdk_fat.so");
 
     // Return if the outputs exist.
-    // if dst.exists() {
-    //     return;
-    // }
+    if dst.exists() {
+        return;
+    }
 
     // Initialize git submodule if necessary.
     if !Path::new("spdk/.git").exists() {
@@ -110,6 +110,13 @@ fn build_from_source() {
         .status()
         .expect("failed to configure");
     assert!(status.success(), "failed to configure: {}", status);
+
+    // add dependencies
+    let status = Command::new("scripts/pkgdep.sh")
+        .current_dir(&src)
+        .status()
+        .expect("fail to add dependencies");
+    assert!(status.success(), "fail to add dependency: {}", status);
 
     // make
     let status = Command::new("make")
