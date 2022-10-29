@@ -111,13 +111,6 @@ fn build_from_source() {
         .expect("failed to configure");
     assert!(status.success(), "failed to configure: {}", status);
 
-    // add dependencies
-    let status = Command::new("scripts/pkgdep.sh")
-        .current_dir(&src)
-        .status()
-        .expect("fail to add dependencies");
-    assert!(status.success(), "fail to add dependency: {}", status);
-
     // make
     let status = Command::new("make")
         .current_dir(&src)
