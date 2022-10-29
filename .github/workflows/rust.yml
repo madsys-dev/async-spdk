@@ -24,6 +24,10 @@ jobs:
       with:
         command: fmt
         args: --all -- --check
+    - name: Clippy
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
 
   build:
     runs-on: ubuntu-latest
