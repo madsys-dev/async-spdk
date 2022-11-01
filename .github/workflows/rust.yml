@@ -20,6 +20,15 @@ jobs:
       with:
         command: fmt
         args: --all -- --check
+    - name: Install dependencies
+      run: |
+        git submodule update --init --recursive
+        cd spdk-sys/spdk
+        sudo scripts/pkgdep.sh
+    - name: Clippy
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
 
   build:
     runs-on: ubuntu-latest
